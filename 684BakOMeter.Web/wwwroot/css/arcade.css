@@ -1,0 +1,582 @@
+/* =============================================
+   684 BAK-O-METER — Arcade Kiosk Theme
+   Optimised for 480×480 px SD display
+   Includes Demos student association branding
+   ============================================= */
+
+/* --- CSS Variables --- */
+:root {
+    --bg-dark:         #140707;
+    --bg-panel:        #200c0c;
+    --bg-card:         #2e1010;
+    --bg-card-hover:   #3d1515;
+    --accent-yellow:   #ffd700;
+    --accent-green:    #00e676;
+    --accent-cyan:     #ff2a2a;
+    --accent-red:      #ff1744;
+    --accent-orange:   #ff9100;
+    --accent-purple:   #b388ff;
+    --accent-pink:     #ff4081;
+    --text-primary:    #f0f0f0;
+    --text-muted:      #7a5a5a;
+    --font-arcade:     'Press Start 2P', monospace, cursive;
+    --font-demos:      'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+    --font-body:       'Segoe UI', system-ui, sans-serif;
+    --radius:          8px;
+    --glow-yellow:     0 0 8px rgba(255,215,0,.5),  0 0 20px rgba(255,215,0,.2);
+    --glow-cyan:       0 0 8px rgba(255,42,42,.6),  0 0 20px rgba(255,42,42,.25);
+    --glow-green:      0 0 8px rgba(0,230,118,.5),  0 0 20px rgba(0,230,118,.2);
+    --demos-gold:      #f5c400;
+    --demos-header-h:  36px;
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+    font-size: 10px;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    cursor: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.arcade-body {
+    background: var(--bg-dark);
+    background-image:
+        radial-gradient(ellipse at 20% 0%,   rgba(255,42,42,.05) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%,  rgba(255,215,0,.04) 0%, transparent 60%);
+    position: relative;
+}
+
+/* Demos watermark logo */
+.arcade-body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url('/images/demos-logo.png') no-repeat center center / contain;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* CRT scanlines */
+.arcade-body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.04) 2px,
+        rgba(0,0,0,.04) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* =============================================
+   MAIN CONTENT AREA
+   ============================================= */
+.arcade-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1rem;
+    position: relative;
+    height: calc(100vh - var(--demos-header-h));
+    overflow: hidden;
+}
+
+.arcade-page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+/* =============================================
+   TITLES
+   ============================================= */
+.arcade-title {
+    font-family: var(--font-arcade);
+    font-size: 1.8rem;
+    color: var(--accent-yellow);
+    text-shadow: var(--glow-yellow);
+    letter-spacing: 2px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.arcade-title--small {
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+}
+
+.arcade-subtitle {
+    font-family: var(--font-arcade);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+/* =============================================
+   BLINK / PROMPT
+   ============================================= */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.15; }
+}
+
+.arcade-blink {
+    animation: blink 1.2s ease-in-out infinite;
+}
+
+.arcade-prompt {
+    font-family: var(--font-arcade);
+    font-size: 0.8rem;
+    color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+/* =============================================
+   BUTTONS
+   ============================================= */
+.arcade-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 340px;
+}
+
+.arcade-menu--narrow {
+    max-width: 300px;
+}
+
+.arcade-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-arcade);
+    font-size: 0.9rem;
+    padding: 0.85rem 1.2rem;
+    border-radius: var(--radius);
+    border: 2px solid rgba(255,255,255,.08);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    text-decoration: none;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all .12s ease;
+    cursor: pointer;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+    line-height: 1.3;
+    width: 100%;
+}
+
+.arcade-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.05), transparent);
+    opacity: 0;
+    transition: opacity .12s;
+}
+
+.arcade-btn:hover::before,
+.arcade-btn.selected::before { opacity: 1; }
+
+.arcade-btn.selected {
+    border-color: var(--accent-cyan);
+    background: var(--bg-card-hover);
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(255,42,42,.35), var(--glow-cyan);
+    transform: scale(1.03);
+}
+
+.arcade-btn--primary {
+    border-color: rgba(0,230,118,.4);
+    background: linear-gradient(135deg, rgba(0,200,83,.12), rgba(0,230,118,.04));
+}
+
+.arcade-btn--primary.selected {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 2px rgba(0,230,118,.3), var(--glow-green);
+}
+
+.arcade-btn--back {
+    font-size: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    background: transparent;
+}
+
+.arcade-btn--back.selected {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+    box-shadow: 0 0 0 2px rgba(255,215,0,.25), var(--glow-yellow);
+}
+
+/* Compact variant — auto width for inline/row layouts */
+.arcade-btn--compact {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.btn-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+/* =============================================
+   LEADERBOARD
+   ============================================= */
+.leaderboard-panel {
+    background: var(--bg-panel);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    width: 100%;
+    max-width: 420px;
+}
+
+.leaderboard-title {
+    font-family: var(--font-arcade);
+    font-size: 0.9rem;
+    color: var(--accent-yellow);
+    text-shadow: var(--glow-yellow);
+    text-align: center;
+    margin-bottom: 0.8rem;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 5px;
+    margin-bottom: 0.2rem;
+    background: transparent;
+}
+
+.leaderboard-row--gold   { background: rgba(255,215,0,.08); }
+.leaderboard-row--silver { background: rgba(192,192,192,.05); }
+.leaderboard-row--bronze { background: rgba(205,127,50,.05); }
+
+.leaderboard-rank {
+    font-family: var(--font-arcade);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    min-width: 28px;
+    text-align: center;
+}
+
+.leaderboard-rank--gold   { color: #ffd700; }
+.leaderboard-rank--silver { color: #c0c0c0; }
+.leaderboard-rank--bronze { color: #cd7f32; }
+
+.leaderboard-name {
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.leaderboard-time {
+    font-family: var(--font-arcade);
+    font-size: 0.7rem;
+    color: var(--accent-green);
+    min-width: 60px;
+    text-align: right;
+}
+
+.leaderboard-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 1rem 0;
+}
+
+.leaderboard-scroll {
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+/* =============================================
+   LEADERBOARD TABS
+   ============================================= */
+.leaderboard-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: center;
+    max-width: 440px;
+}
+
+.leaderboard-tab {
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 5px;
+    border: 2px solid rgba(255,255,255,.08);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    outline: none;
+    transition: all .1s;
+    letter-spacing: 0.5px;
+}
+
+.leaderboard-tab.selected {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+    background: rgba(255,215,0,.08);
+    box-shadow: 0 0 0 2px rgba(255,215,0,.15);
+    transform: scale(1.05);
+}
+
+/* =============================================
+   TIMER
+   ============================================= */
+.timer-display {
+    font-family: var(--font-arcade);
+    font-size: 3.2rem;
+    color: var(--accent-green);
+    text-shadow: var(--glow-green);
+    text-align: center;
+    letter-spacing: 3px;
+}
+
+.timer-display--running {
+    color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+}
+
+.timer-display--stopped {
+    color: var(--accent-yellow);
+    text-shadow: var(--glow-yellow);
+}
+
+/* =============================================
+   RESULT SCREEN
+   ============================================= */
+@keyframes resultPulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.04); }
+}
+
+@keyframes resultGlow {
+    0%, 100% { text-shadow: var(--glow-yellow); }
+    50%       { text-shadow: 0 0 20px rgba(255,215,0,.9), 0 0 40px rgba(255,215,0,.4); }
+}
+
+@keyframes confettiFall {
+    0%   { transform: translateY(-100vh) rotate(0deg);   opacity: 1; }
+    100% { transform: translateY(100vh)  rotate(720deg); opacity: 0; }
+}
+
+.result-screen {
+    text-align: center;
+    animation: resultPulse 2s ease-in-out infinite;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.result-title {
+    font-family: var(--font-arcade);
+    font-size: 1.1rem;
+    color: var(--accent-yellow);
+    animation: resultGlow 1.5s ease-in-out infinite;
+    letter-spacing: 2px;
+}
+
+.result-time {
+    font-family: var(--font-arcade);
+    font-size: 2.8rem;
+    color: var(--accent-green);
+    text-shadow: var(--glow-green);
+}
+
+.result-player {
+    font-family: var(--font-arcade);
+    font-size: 0.9rem;
+    color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+    letter-spacing: 1px;
+}
+
+.result-rank {
+    font-family: var(--font-arcade);
+    font-size: 1.6rem;
+    color: var(--accent-yellow);
+    text-shadow: var(--glow-yellow);
+    letter-spacing: 2px;
+}
+
+.result-new-best {
+    font-family: var(--font-arcade);
+    font-size: 0.7rem;
+    color: var(--accent-green);
+    text-shadow: var(--glow-green);
+    letter-spacing: 1px;
+}
+
+.result-not-best {
+    font-family: var(--font-arcade);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.result-not-best-inline {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.result-winner {
+    font-family: var(--font-arcade);
+    font-size: 1.4rem;
+    color: var(--accent-yellow);
+    animation: resultGlow 1s ease-in-out infinite;
+    letter-spacing: 2px;
+}
+
+.result-vs {
+    font-family: var(--font-arcade);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.result-loser {
+    font-family: var(--font-arcade);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.result-countdown {
+    font-family: var(--font-arcade);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 0.8rem;
+    letter-spacing: 1px;
+}
+
+/* =============================================
+   CONFETTI
+   ============================================= */
+.confetti {
+    position: fixed;
+    top: -10px;
+    width: 8px;
+    height: 8px;
+    animation: confettiFall linear forwards;
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* =============================================
+   NAME INPUT
+   ============================================= */
+.arcade-input-group {
+    width: 100%;
+    max-width: 320px;
+    margin: 0.4rem auto;
+    text-align: center;
+}
+
+.arcade-label {
+    display: block;
+    font-family: var(--font-arcade);
+    font-size: 0.6rem;
+    color: var(--accent-cyan);
+    letter-spacing: 1px;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+}
+
+.arcade-input {
+    width: 100%;
+    font-family: var(--font-arcade);
+    font-size: 0.9rem;
+    padding: 0.7rem 0.8rem;
+    background: var(--bg-panel);
+    border: 2px solid rgba(255,255,255,.1);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    transition: border-color .12s, box-shadow .12s;
+}
+
+.arcade-input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: var(--glow-cyan);
+}
+
+.arcade-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+/* =============================================
+   PLACEHOLDER PAGE
+   ============================================= */
+.arcade-placeholder {
+    text-align: center;
+    max-width: 380px;
+}
+
+.arcade-placeholder p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0.8rem 0;
+    line-height: 1.6;
+}
+
+/* =============================================
+   UTILITIES
+   ============================================= */
+.mt-1 { margin-top: 0.3rem; }
+.mt-2 { margin-top: 0.6rem; }
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.4rem; }
+.mb-2 { margin-bottom: 0.6rem; }
+.mb-3 { margin-bottom: 1rem; }
+.text-center { text-align: center; }
+
+::-webkit-scrollbar { display: none; }

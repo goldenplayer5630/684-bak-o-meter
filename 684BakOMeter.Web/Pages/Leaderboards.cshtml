@@ -1,0 +1,14 @@
+@page
+@model LeaderboardsModel
+@{
+    ViewData["Title"] = "LEADERBOARDS";
+}
+
+<div id="leaderboards-app"
+     data-chug-types='@Html.Raw(Model.ChugTypesJson)'
+     data-leaderboards='@Html.Raw(Model.LeaderboardsJson)'>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/dist/leaderboards-main.js" asp-append-version="true"></script>
+}

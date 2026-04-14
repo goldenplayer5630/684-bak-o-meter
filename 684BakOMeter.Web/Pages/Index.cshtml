@@ -1,0 +1,14 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "DEMOS BAK-O-METER";
+}
+
+<div id="arcade-menu-app"
+     data-chug-types='@Html.Raw(Model.ChugTypesJson)'
+     data-leaderboards='@Html.Raw(Model.LeaderboardsJson)'>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/dist/index-main.js" asp-append-version="true"></script>
+}

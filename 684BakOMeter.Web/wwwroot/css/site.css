@@ -1,0 +1,352 @@
+/* =============================================
+   684 BAK-O-METER – Arcade / Kiosk Theme
+   ============================================= */
+
+/* --- Fonts & base --- */
+:root {
+    --bg-dark:       #0d0d1a;
+    --bg-panel:      #161628;
+    --bg-card:       #1e1e3a;
+    --accent-yellow: #ffd700;
+    --accent-green:  #00e676;
+    --accent-cyan:   #00e5ff;
+    --accent-red:    #ff1744;
+    --accent-orange: #ff9100;
+    --text-primary:  #f0f0f0;
+    --text-muted:    #8888aa;
+    --font-arcade:   'Press Start 2P', monospace, cursive;
+    --radius:        12px;
+}
+
+html {
+    font-size: 18px;
+    min-height: 100%;
+}
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+.arcade-body {
+    background: var(--bg-dark);
+    background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(0,229,255,.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(255,215,0,.05) 0%, transparent 60%);
+}
+
+/* --- Header / Nav --- */
+.arcade-header {
+    background: var(--bg-panel);
+    border-bottom: 3px solid var(--accent-yellow);
+    box-shadow: 0 2px 20px rgba(255,215,0,.15);
+}
+.arcade-brand {
+    font-family: var(--font-arcade);
+    font-size: 1rem;
+    color: var(--accent-yellow) !important;
+    text-shadow: 0 0 10px rgba(255,215,0,.5);
+    letter-spacing: 2px;
+}
+.nav-arcade {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary) !important;
+    padding: .5rem 1rem !important;
+    border-radius: var(--radius);
+    transition: all .15s;
+}
+.nav-arcade:hover, .nav-arcade:focus {
+    background: rgba(255,215,0,.15);
+    color: var(--accent-yellow) !important;
+}
+
+/* --- Footer --- */
+.arcade-footer {
+    padding: 1rem;
+    color: var(--text-muted);
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+}
+
+/* --- Hero / Page Titles --- */
+.arcade-hero { padding-top: 2rem; }
+.arcade-title {
+    font-family: var(--font-arcade);
+    font-size: 2.4rem;
+    color: var(--accent-yellow);
+    text-shadow: 0 0 20px rgba(255,215,0,.4), 0 0 60px rgba(255,215,0,.15);
+    letter-spacing: 3px;
+}
+.arcade-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-top: .5rem;
+}
+.arcade-page-title {
+    font-family: var(--font-arcade);
+    font-size: 1.4rem;
+    color: var(--accent-cyan);
+    text-shadow: 0 0 10px rgba(0,229,255,.3);
+    letter-spacing: 2px;
+}
+
+/* --- Stat Cards --- */
+.stat-card {
+    background: var(--bg-card);
+    border: 2px solid rgba(255,255,255,.08);
+    border-radius: var(--radius);
+    padding: 2rem 1.5rem;
+    transition: transform .15s, box-shadow .15s;
+}
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0,229,255,.15);
+}
+.stat-card--gold {
+    border-color: var(--accent-yellow);
+    box-shadow: 0 0 20px rgba(255,215,0,.12);
+}
+.stat-value {
+    font-family: var(--font-arcade);
+    font-size: 2rem;
+    color: var(--accent-green);
+    text-shadow: 0 0 8px rgba(0,230,118,.3);
+}
+.stat-card--gold .stat-value {
+    color: var(--accent-yellow);
+    text-shadow: 0 0 8px rgba(255,215,0,.4);
+}
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: .5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* --- Arcade Buttons --- */
+.btn-arcade {
+    font-weight: 800;
+    font-size: 1.3rem;
+    padding: 1rem 2rem;
+    border-radius: var(--radius);
+    border: 3px solid transparent;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all .15s;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+}
+.btn-arcade:focus {
+    outline: 3px solid var(--accent-cyan);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(0,229,255,.25);
+}
+.btn-arcade--primary {
+    background: linear-gradient(135deg, #00c853, #00e676);
+    color: #000;
+    border-color: #00e676;
+    box-shadow: 0 4px 15px rgba(0,230,118,.3);
+}
+.btn-arcade--primary:hover {
+    background: linear-gradient(135deg, #00e676, #69f0ae);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0,230,118,.4);
+}
+.btn-arcade--secondary {
+    background: var(--bg-card);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+}
+.btn-arcade--secondary:hover {
+    background: rgba(0,229,255,.1);
+    color: #fff;
+    transform: translateY(-2px);
+}
+.btn-arcade--danger {
+    background: rgba(255,23,68,.1);
+    color: var(--accent-red);
+    border-color: var(--accent-red);
+}
+.btn-arcade--danger:hover {
+    background: var(--accent-red);
+    color: #fff;
+}
+.btn-arcade--back {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--text-muted);
+    font-size: 1rem;
+    padding: .7rem 1.5rem;
+}
+.btn-arcade--back:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+.btn-arcade--small {
+    font-size: 0.85rem;
+    padding: .6rem 1rem;
+}
+
+/* --- Panels --- */
+.arcade-panel {
+    background: var(--bg-card);
+    border: 2px solid rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+}
+.panel-title {
+    font-family: var(--font-arcade);
+    font-size: 1rem;
+    color: var(--accent-yellow);
+    margin-bottom: 1.2rem;
+    letter-spacing: 2px;
+}
+
+/* --- Attempt list rows --- */
+.attempt-list { display: flex; flex-direction: column; gap: .5rem; }
+.attempt-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: .9rem 1.2rem;
+    background: var(--bg-panel);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    border: 2px solid transparent;
+    transition: all .12s;
+}
+.attempt-row:hover, .attempt-row:focus {
+    border-color: var(--accent-cyan);
+    background: rgba(0,229,255,.06);
+    color: #fff;
+    outline: none;
+}
+.attempt-player { font-weight: 700; min-width: 120px; }
+.attempt-duration {
+    font-family: var(--font-arcade);
+    font-size: 0.85rem;
+    color: var(--accent-green);
+    min-width: 90px;
+}
+.attempt-weight { color: var(--accent-orange); font-weight: 600; min-width: 70px; }
+.attempt-date { font-size: .8rem; margin-left: auto; }
+
+/* --- Player Cards --- */
+.player-card {
+    background: var(--bg-card);
+    border: 2px solid rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: 1.8rem 1.5rem;
+    text-align: center;
+    transition: transform .15s;
+}
+.player-card:hover { transform: translateY(-3px); }
+.player-name {
+    font-family: var(--font-arcade);
+    font-size: 1.1rem;
+    color: var(--accent-cyan);
+    margin-bottom: .8rem;
+}
+.player-stats {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    font-size: .9rem;
+    color: var(--text-muted);
+}
+
+/* --- Forms --- */
+.arcade-form-panel {
+    max-width: 600px;
+    background: var(--bg-card);
+    border: 2px solid rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+}
+.arcade-label {
+    display: block;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: .5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.arcade-input {
+    background: var(--bg-panel) !important;
+    border: 2px solid rgba(255,255,255,.12) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
+    font-size: 1.2rem !important;
+    padding: .9rem 1rem !important;
+    transition: border-color .15s;
+}
+.arcade-input:focus {
+    border-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 0 4px rgba(0,229,255,.2) !important;
+    outline: none;
+}
+.arcade-input::placeholder {
+    color: var(--text-muted) !important;
+}
+.arcade-validation {
+    color: var(--accent-red);
+    font-size: .85rem;
+    margin-top: .3rem;
+    display: block;
+}
+.arcade-select {
+    appearance: auto;
+}
+.arcade-checkbox-label {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+/* --- Detail Panels --- */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.detail-item {}
+.detail-label {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: .2rem;
+}
+.detail-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.detail-value--highlight {
+    font-family: var(--font-arcade);
+    color: var(--accent-green);
+    text-shadow: 0 0 6px rgba(0,230,118,.3);
+}
+
+/* --- Empty state --- */
+.arcade-empty {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+/* --- Misc --- */
+a:focus-visible {
+    outline: 3px solid var(--accent-cyan);
+    outline-offset: 2px;
+}
+.text-muted { color: var(--text-muted) !important; }

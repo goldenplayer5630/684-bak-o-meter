@@ -1,0 +1,13 @@
+@page
+@model PlayModel
+@{
+    ViewData["Title"] = "PLAY";
+}
+
+<div id="play-app"
+     data-play='@Html.Raw(Model.PlayPageDataJson)'>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/dist/play-main.js" asp-append-version="true"></script>
+}
