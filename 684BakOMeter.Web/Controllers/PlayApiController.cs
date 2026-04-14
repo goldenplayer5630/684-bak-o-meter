@@ -50,19 +50,13 @@ public class PlayApiController : ControllerBase
 
         // Check whether the player already has a better record for this type
         var existing = await _attempts.GetPersonalBestAsync(request.PlayerId, chugType);
+        bool isNewBest = existing is null || request.DurationMs < existing.DurationMs;
 
-        if (existing is not null && existing.DurationMs <= request.DurationMs)
+        if (isNewBest && existing is not null)
         {
-            // Not a new best — return existing best without saving
-            var existingRank = await _attempts.GetAttemptRankAsync(existing.Id, chugType);
-            return Ok(new
-            {
-                id         = existing.Id,
-                rank       = existingRank,
-                durationMs = existing.DurationMs,
-                duration   = $"{existing.DurationMs / 1000.0:F3}s",
-                isNewBest  = false,
-            });
+            // if this attempt is a new best, mark the old one as not a high score anymore
+            existing.IsHighScore = false;
+            await _attempts.UpdateAsync(existing);
         }
 
         var now = DateTime.UtcNow;
@@ -73,6 +67,7 @@ public class PlayApiController : ControllerBase
             EndedAt    = now,
             DurationMs = request.DurationMs,
             ChugType   = chugType,
+            IsHighScore = isNewBest,
         };
 
         await _attempts.AddAsync(attempt);
@@ -85,7 +80,7 @@ public class PlayApiController : ControllerBase
             rank,
             durationMs = attempt.DurationMs,
             duration   = $"{attempt.DurationMs / 1000.0:F3}s",
-            isNewBest  = true,
+            isNewBest  = isNewBest,
         });
     }
 }

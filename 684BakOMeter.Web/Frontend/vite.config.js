@@ -11,10 +11,13 @@ export default defineConfig({
         emptyOutDir: true,
         rollupOptions: {
             input: {
-                'index-main':        resolve(__dirname, 'src/index-main.js'),
-                'play-main':         resolve(__dirname, 'src/play-main.js'),
-                'leaderboards-main': resolve(__dirname, 'src/leaderboards-main.js'),
-                'personal-main':     resolve(__dirname, 'src/personal-main.js'),
+                'index-main':              resolve(__dirname, 'src/index-main.js'),
+                'play-main':               resolve(__dirname, 'src/play-main.js'),
+                'leaderboards-main':       resolve(__dirname, 'src/leaderboards-main.js'),
+                'personal-main':           resolve(__dirname, 'src/personal-main.js'),
+                'settings-main':           resolve(__dirname, 'src/settings-main.js'),
+                'hidden-menu-main':        resolve(__dirname, 'src/hidden-menu-main.js'),
+                'hidden-leaderboards-main': resolve(__dirname, 'src/hidden-leaderboards-main.js'),
             },
             output: {
                 entryFileNames: '[name].js',

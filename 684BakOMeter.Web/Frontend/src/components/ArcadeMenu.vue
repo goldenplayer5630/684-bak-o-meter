@@ -59,18 +59,25 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useIdleTimeout } from '../composables/useIdleTimeout.js';
+import { useDiaboloMode } from '../composables/useDiaboloMode.js';
 
 // --- SVG icon paths (inline, no emoji dependency) ---
 const ICONS = {
     beer:  '<path d="M5 3h11l-1 13a4 4 0 01-4 4H9a4 4 0 01-4-4L5 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 7h13v3a4 4 0 01-3 3.87" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     trophy:'<path d="M8 21h8M12 17v4M5 3h14l-1 8a6 6 0 01-12 0L5 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 7H2l1 5a3 3 0 003 2M19 7h3l-1 5a3 3 0 01-3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     chart: '<path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 16l4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    gear:  '<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
 };
 
 const props = defineProps({
     chugTypes: { type: Array, default: () => [] },
     leaderboards: { type: Object, default: () => ({}) },
 });
+
+// --- Secret codes ---
+const SECRET_SEQ684 = ['Digit6', 'Digit8', 'Digit4'];
+const secretBuffer684 = [];
+const diabolo = useDiaboloMode();
 
 // --- State ---
 const phase = ref('attract');
@@ -144,10 +151,17 @@ const menuItems = computed(() => {
     });
     items.push({
         id: 'personal',
-        label: 'Persoonlijke Stats',
+        label: 'Profiel',
         iconSvg: ICONS.chart,
         btnClass: '',
         action: () => { window.location.href = '/personal'; },
+    });
+    items.push({
+        id: 'settings',
+        label: 'Instellingen',
+        iconSvg: ICONS.gear,
+        btnClass: '',
+        action: () => { window.location.href = '/settings'; },
     });
     return items;
 });
@@ -176,8 +190,24 @@ function getCols() { return 1; }
 // --- Idle timeout (60s) ---
 const idleTimeout = useIdleTimeout(60000, () => { startAttract(); });
 
+function checkSecrets(code) {
+    // 684 → hidden menu
+    secretBuffer684.push(code);
+    if (secretBuffer684.length > SECRET_SEQ684.length) secretBuffer684.shift();
+    if (secretBuffer684.length === SECRET_SEQ684.length && secretBuffer684.every((k, i) => k === SECRET_SEQ684[i])) {
+        window.location.href = '/hidden';
+        return;
+    }
+
+    // 666 → diabolo mode toggle
+    diabolo.feedKey(code);
+}
+
 // --- Keyboard ---
 function onKeyDown(e) {
+    checkSecrets(e.code);
+
+
     if (phase.value === 'attract') {
         if (e.code === 'Space' || e.code === 'Enter') {
             e.preventDefault();

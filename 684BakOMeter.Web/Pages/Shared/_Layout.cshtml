@@ -11,6 +11,8 @@
 </head>
 
 <body class="arcade-body">
+    <script>if(localStorage.getItem('diabolo')==='1')document.body.classList.add('diabolo-mode');if(localStorage.getItem('lionmode')==='1')document.body.classList.add('lion-mode');</script>
+    <div class="diabolo-corner"></div>
 
     <main class="arcade-main" role="main">
         @RenderBody()

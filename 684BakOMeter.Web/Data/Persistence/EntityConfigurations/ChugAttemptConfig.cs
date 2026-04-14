@@ -30,6 +30,9 @@ public class ChugAttemptConfig : IEntityTypeConfiguration<ChugAttempt>
         builder.Property(ca => ca.DurationMs)
                .IsRequired();
 
+        builder.Property(ca => ca.IsHighScore)
+               .IsRequired();
+
         // ChugType enum persisted as its string name for readability in the database
         builder.Property(ca => ca.ChugType)
                .IsRequired()

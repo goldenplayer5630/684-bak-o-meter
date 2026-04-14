@@ -68,6 +68,45 @@ body {
     z-index: 0;
 }
 
+/* 666 / diabolo easter egg mode */
+body.diabolo-mode.arcade-body {
+    background: #000 !important;
+    background-image: none !important;
+}
+body.diabolo-mode.arcade-body::before {
+    background-image: url('/images/geheim-logo.png');
+    opacity: 0.12;
+    z-index: 9999; /* above the corner, same layer as scanlines */
+}
+.diabolo-corner {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 50vw;
+    height: 50vh;
+    background: rgba(120, 0, 0, 0.5);
+    z-index: 9998;
+    pointer-events: none;
+}
+body.diabolo-mode .diabolo-corner {
+    display: block;
+}
+
+/* klc / lion mode easter egg */
+body.lion-mode.arcade-body {
+    background-image: none !important;
+}
+body.lion-mode.arcade-body::before {
+    background-image: url('/images/leeuwgod.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.18;
+    filter: invert(1);
+    z-index: 9999;
+}
+
 /* CRT scanlines */
 .arcade-body::after {
     content: '';

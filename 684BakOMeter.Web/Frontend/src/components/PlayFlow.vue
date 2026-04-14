@@ -35,35 +35,35 @@
                         :class="{ selected: modeIndex === 2 }"
                         @click="goBack()"
                         @mouseenter="modeIndex = 2">
-                    &lsaquo; TERUG
+                    &lsaquo; TERUG (DRUK ESC)
                 </button>
             </div>
         </template>
 
-        <!-- STEP 2: Name Entry -->
-        <template v-if="step === 'names'">
-            <h1 class="arcade-title arcade-title--small">VOER JE NAAM IN</h1>
+        <!-- STEP 2: NFC scan for player 1 -->
+        <template v-if="step === 'nfc-scan'">
+            <h1 class="arcade-title arcade-title--small">SPELER 1</h1>
+            <NfcScanGate @scanned="onPlayer1Scanned" @back="step = 'mode'" />
+        </template>
 
-            <NameEntry ref="nameEntryRef" :multiplayer="isMultiplayer" @submit="onNamesSubmitted" />
+        <!-- STEP 2b: Unknown tag for player 1 — create new user -->
+        <template v-if="step === 'create-user'">
+            <CreateUserFromNfc :tagUid="pendingTagUid"
+                               @created="onUserCreated"
+                               @cancel="step = 'nfc-scan'" />
+        </template>
 
-            <div class="arcade-menu arcade-menu--narrow mt-3">
-                <button class="arcade-btn arcade-btn--primary"
-                        :class="{ selected: nameButtonIndex === 0 }"
-                        @click="triggerNameSubmit"
-                        @mouseenter="nameButtonIndex = 0">
-                    <!-- play triangle -->
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 4l14 8-14 8V4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                    </svg>
-                    START
-                </button>
-                <button class="arcade-btn arcade-btn--back"
-                        :class="{ selected: nameButtonIndex === 1 }"
-                        @click="step = 'mode'"
-                        @mouseenter="nameButtonIndex = 1">
-                    &lsaquo; TERUG
-                </button>
-            </div>
+        <!-- STEP 3: NFC scan for player 2 (multiplayer only) -->
+        <template v-if="step === 'nfc-scan-p2'">
+            <h1 class="arcade-title arcade-title--small">SPELER 2</h1>
+            <NfcScanGate @scanned="onPlayer2Scanned" @back="step = 'nfc-scan'" />
+        </template>
+
+        <!-- STEP 3b: Unknown tag for player 2 — create new user -->
+        <template v-if="step === 'create-user-p2'">
+            <CreateUserFromNfc :tagUid="pendingTagUid"
+                               @created="onPlayer2Created"
+                               @cancel="step = 'nfc-scan-p2'" />
         </template>
 
         <!-- STEP 3: Chug Timer -->
@@ -143,21 +143,27 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import TimerDisplay from './TimerDisplay.vue';
-import NameEntry from './NameEntry.vue';
+import NfcScanGate from './NfcScanGate.vue';
+import CreateUserFromNfc from './CreateUserFromNfc.vue';
+import { useDiaboloMode } from '../composables/useDiaboloMode.js';
 
 const props = defineProps({
     chugTypeSlug: { type: String, default: 'Bak' },
     chugTypeLabel: { type: String, default: 'Bak' },
 });
 
+const diabolo = useDiaboloMode();
+
 // --- Flow ---
+// Starts at mode selection; NFC scans happen after mode is chosen
 const step = ref('mode');
 const modeIndex = ref(0);
 const isMultiplayer = ref(false);
-const nameButtonIndex = ref(0);
-const nameEntryRef = ref(null);
 
-// --- Player data ---
+// Holds the scanned tag UID while waiting for user creation
+const pendingTagUid = ref('');
+
+// --- Player data (resolved via NFC) ---
 const playerName1 = ref('');
 const playerName2 = ref('');
 let player1Id = null;
@@ -203,54 +209,97 @@ function formatTime(ms) {
     return `${sec}.${frac}`;
 }
 
+// --- NFC scan handlers ---
+
+// Player 1 scanned their tag
+async function onPlayer1Scanned(uid) {
+    const result = await resolveNfcTag(uid);
+    if (result.known) {
+        player1Id = result.playerId;
+        playerName1.value = result.playerName;
+        if (isMultiplayer.value) {
+            step.value = 'nfc-scan-p2';
+        } else {
+            startChug();
+        }
+    } else {
+        // Unknown tag — redirect to user creation flow
+        pendingTagUid.value = uid;
+        step.value = 'create-user';
+    }
+}
+
+// New user created from unknown tag (player 1)
+function onUserCreated({ playerId, playerName }) {
+    player1Id = playerId;
+    playerName1.value = playerName;
+    if (isMultiplayer.value) {
+        step.value = 'nfc-scan-p2';
+    } else {
+        startChug();
+    }
+}
+
+// Player 2 scanned their tag (multiplayer)
+async function onPlayer2Scanned(uid) {
+    const result = await resolveNfcTag(uid);
+    if (result.known) {
+        if (result.playerId === player1Id) {
+            // Same player — don't allow playing against yourself
+            return;
+        }
+        player2Id = result.playerId;
+        playerName2.value = result.playerName;
+        startChug();
+    } else {
+        pendingTagUid.value = uid;
+        step.value = 'create-user-p2';
+    }
+}
+
+// New user created from unknown tag (player 2)
+function onPlayer2Created({ playerId, playerName }) {
+    player2Id = playerId;
+    playerName2.value = playerName;
+    startChug();
+}
+
+async function resolveNfcTag(uid) {
+    try {
+        const res = await fetch('/api/nfc/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid }),
+        });
+        return await res.json();
+    } catch {
+        return { known: false };
+    }
+}
+
 // --- Mode selection ---
 function selectMode(i) {
     modeIndex.value = i;
-    if (i === 0) { isMultiplayer.value = false; step.value = 'names'; }
-    else if (i === 1) { isMultiplayer.value = true; step.value = 'names'; }
+    if (i === 0) {
+        isMultiplayer.value = false;
+        step.value = 'nfc-scan';
+    } else if (i === 1) {
+        isMultiplayer.value = true;
+        step.value = 'nfc-scan';
+    }
+}
+
+function startChug() {
+    step.value = 'chug';
+    timerState.value = 'idle';
+    mpPhase.value = 'p1ready';
+    mp1State.value = 'idle';
+    mp2State.value = 'idle';
+    elapsed1.value = 0;
+    elapsed2.value = 0;
 }
 
 function goBack() { window.location.href = '/'; }
-
-function triggerNameSubmit() {
-    nameEntryRef.value?.submit();
-}
-
-// --- Name submit ---
-async function onNamesSubmitted({ name1, name2 }) {
-    playerName1.value = name1;
-    playerName2.value = name2 || '';
-
-    try {
-        let res = await fetch('/api/play/resolve-player', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name1 }),
-        });
-        let data = await res.json();
-        player1Id = data.id;
-
-        if (isMultiplayer.value && name2) {
-            res = await fetch('/api/play/resolve-player', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name2 }),
-            });
-            data = await res.json();
-            player2Id = data.id;
-        }
-
-        step.value = 'chug';
-        timerState.value = 'idle';
-        mpPhase.value = 'p1ready';
-        mp1State.value = 'idle';
-        mp2State.value = 'idle';
-        elapsed1.value = 0;
-        elapsed2.value = 0;
-    } catch {
-        // Error is handled inside NameEntry; fallback
-    }
-}
 
 // --- Chug logic ---
 function handleChugSpace() {
@@ -340,6 +389,8 @@ function spawnConfetti() {
 
 // --- Keyboard ---
 function onKeyDown(e) {
+    diabolo.feedKey(e.code);
+
     if (step.value === 'mode') {
         if (e.code === 'ArrowUp') { e.preventDefault(); modeIndex.value = Math.max(0, modeIndex.value - 1); }
         else if (e.code === 'ArrowDown') { e.preventDefault(); modeIndex.value = Math.min(2, modeIndex.value + 1); }
@@ -348,8 +399,6 @@ function onKeyDown(e) {
             if (modeIndex.value === 2) goBack();
             else selectMode(modeIndex.value);
         } else if (e.code === 'Escape') { goBack(); }
-    } else if (step.value === 'names') {
-        if (e.code === 'Escape') { e.preventDefault(); step.value = 'mode'; }
     } else if (step.value === 'chug') {
         if (e.code === 'Space') { e.preventDefault(); handleChugSpace(); }
     }

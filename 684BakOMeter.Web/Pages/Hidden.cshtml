@@ -1,0 +1,13 @@
+@page
+@model HiddenMenuModel
+@{
+    ViewData["Title"] = "???";
+}
+
+<div id="hidden-menu-app"
+     data-chug-types='@Html.Raw(Model.ChugTypesJson)'>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/dist/hidden-menu-main.js" asp-append-version="true"></script>
+}

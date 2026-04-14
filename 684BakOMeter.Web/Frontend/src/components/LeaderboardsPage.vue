@@ -56,7 +56,7 @@
                 :class="{ selected: focus === 'back' }"
                 @click="goBack()"
                 @mouseenter="focus = 'back'">
-            &lsaquo; TERUG
+            &lsaquo; TERUG (DRUK ESC)
         </button>
 
         <!-- Key hint -->
@@ -68,6 +68,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useDiaboloMode } from '../composables/useDiaboloMode.js';
 
 const PER_PAGE = 8;
 
@@ -75,6 +76,8 @@ const props = defineProps({
     chugTypes:    { type: Array,  default: () => [] },
     leaderboards: { type: Object, default: () => ({}) },
 });
+
+const diabolo = useDiaboloMode();
 
 // focus zones: 'tab' | 'pager' | 'back'
 const tabIdx  = ref(0);
@@ -135,6 +138,8 @@ function rankClass(r) {
 // Space/Enter = activate
 // Esc = go home
 function onKey(e) {
+    diabolo.feedKey(e.code);
+
     const n      = props.chugTypes.length;
     const paging = pages.value > 1;
     const f      = focus.value;

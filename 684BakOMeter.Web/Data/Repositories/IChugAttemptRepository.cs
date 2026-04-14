@@ -46,4 +46,10 @@ public interface IChugAttemptRepository
     /// have no attempts for that type.
     /// </summary>
     Task<ChugAttempt?> GetPersonalBestAsync(int playerId, ChugType chugType);
+
+    /// <summary>
+    /// Returns the most recent <paramref name="count"/> attempts for a given player
+    /// and chug type, newest first.
+    /// </summary>
+    Task<IEnumerable<ChugAttempt>> GetRecentByPlayerAndTypeAsync(int playerId, ChugType chugType, int count = 10);
 }

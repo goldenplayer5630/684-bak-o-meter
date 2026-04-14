@@ -73,10 +73,10 @@ public class ChugAttemptRepository : IChugAttemptRepository
     /// <inheritdoc />
     public async Task<IEnumerable<ChugAttempt>> GetLeaderboardAsync(ChugType chugType, int count = 10)
     {
-        // One entry per player — their personal best for this chug type
+        // One entry per player — their active high score for this chug type
         var bestIds = await _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+            .Where(a => a.ChugType == chugType && a.IsHighScore)
             .GroupBy(a => a.PlayerId)
             .Select(g => g.OrderBy(a => a.DurationMs).First().Id)
             .ToListAsync();
@@ -93,10 +93,10 @@ public class ChugAttemptRepository : IChugAttemptRepository
     public async Task<(IEnumerable<ChugAttempt> Items, int TotalCount)> GetLeaderboardPagedAsync(
         ChugType chugType, int page, int pageSize)
     {
-        // One entry per player — their personal best for this chug type
+        // One entry per player — their active high score for this chug type
         var bestIds = await _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+            .Where(a => a.ChugType == chugType && a.IsHighScore)
             .GroupBy(a => a.PlayerId)
             .Select(g => g.OrderBy(a => a.DurationMs).First().Id)
             .ToListAsync();
@@ -119,29 +119,57 @@ public class ChugAttemptRepository : IChugAttemptRepository
             .FirstOrDefaultAsync(a => a.Id == attemptId && a.ChugType == chugType);
         if (attempt is null) return null;
 
-        // Only rank against each player's personal best
+        var benchmarkDuration = attempt.DurationMs;
+
+        // If this specific attempt is not the active high score, rank the player's
+        // current high score instead so leaderboard-related UI stays accurate.
+        if (!attempt.IsHighScore)
+        {
+            var playerHighScore = await _db.ChugAttempts
+                .AsNoTracking()
+                .Where(a => a.PlayerId == attempt.PlayerId && a.ChugType == chugType && a.IsHighScore)
+                .OrderBy(a => a.DurationMs)
+                .FirstOrDefaultAsync();
+
+            if (playerHighScore is not null)
+                benchmarkDuration = playerHighScore.DurationMs;
+        }
+
+        // Rank against active high scores only
         var rank = await _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+            .Where(a => a.ChugType == chugType && a.IsHighScore)
             .GroupBy(a => a.PlayerId)
             .Select(g => g.Min(a => a.DurationMs))
-            .CountAsync(best => best < attempt.DurationMs) + 1;
+            .CountAsync(best => best < benchmarkDuration) + 1;
 
         return rank;
     }
 
     /// <inheritdoc />
     public async Task<ChugAttempt?> GetPersonalBestAsync(int playerId, ChugType chugType)
-        => await _db.ChugAttempts
-                    .AsNoTracking()
-                    .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
-                    .OrderBy(a => a.DurationMs)
-                    .FirstOrDefaultAsync();
+    {
+        var highScore = await _db.ChugAttempts
+            .AsNoTracking()
+            .Where(a => a.PlayerId == playerId && a.ChugType == chugType && a.IsHighScore)
+            .OrderBy(a => a.DurationMs)
+            .FirstOrDefaultAsync();
+
+        if (highScore is not null)
+            return highScore;
+
+        // Fallback for older data that may not have IsHighScore populated yet.
+        return await _db.ChugAttempts
+            .AsNoTracking()
+            .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
+            .OrderBy(a => a.DurationMs)
+            .FirstOrDefaultAsync();
+    }
 
     /// <inheritdoc />
     public async Task<IEnumerable<PersonalStat>> GetPersonalStatsAsync(int playerId)
     {
-        // Load all attempts for this player
+        // Load all attempts for this player (attemptCount uses all attempts)
         var playerAttempts = await _db.ChugAttempts
             .AsNoTracking()
             .Where(a => a.PlayerId == playerId)
@@ -152,20 +180,21 @@ public class ChugAttemptRepository : IChugAttemptRepository
         foreach (var group in playerAttempts.GroupBy(a => a.ChugType))
         {
             var chugType    = group.Key;
-            var best        = group.MinBy(a => a.DurationMs)!;
+            var best        = group.Where(a => a.IsHighScore).OrderBy(a => a.DurationMs).FirstOrDefault()
+                           ?? group.MinBy(a => a.DurationMs)!;
             var attemptCount = group.Count();
 
-            // Rank = players with a strictly better best time + 1
+            // Rank = players with a strictly better active high score + 1
             var rank = await _db.ChugAttempts
                 .AsNoTracking()
-                .Where(a => a.ChugType == chugType)
+                .Where(a => a.ChugType == chugType && a.IsHighScore)
                 .GroupBy(a => a.PlayerId)
                 .Select(g => g.Min(a => a.DurationMs))
                 .CountAsync(bestMs => bestMs < best.DurationMs) + 1;
 
             var total = await _db.ChugAttempts
                 .AsNoTracking()
-                .Where(a => a.ChugType == chugType)
+                .Where(a => a.ChugType == chugType && a.IsHighScore)
                 .Select(a => a.PlayerId)
                 .Distinct()
                 .CountAsync();
@@ -175,4 +204,14 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
         return stats.OrderBy(s => s.ChugType);
     }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<ChugAttempt>> GetRecentByPlayerAndTypeAsync(
+        int playerId, ChugType chugType, int count = 10)
+        => await _db.ChugAttempts
+                    .AsNoTracking()
+                    .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
+                    .OrderByDescending(a => a.StartedAt)
+                    .Take(count)
+                    .ToListAsync();
 }

@@ -17,7 +17,7 @@ namespace _684BakOMeter.Web.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.14")
+                .HasAnnotation("ProductVersion", "10.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -41,6 +41,9 @@ namespace _684BakOMeter.Web.Migrations
                     b.Property<DateTime>("EndedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsHighScore")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -62,6 +65,44 @@ namespace _684BakOMeter.Web.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("ChugAttempts");
+                });
+
+            modelBuilder.Entity("_684BakOMeter.Web.Domain.Entities.NfcTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Uid")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique();
+
+                    b.ToTable("NfcTags");
                 });
 
             modelBuilder.Entity("_684BakOMeter.Web.Domain.Entities.OneVsOneMatch", b =>
@@ -155,6 +196,17 @@ namespace _684BakOMeter.Web.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("_684BakOMeter.Web.Domain.Entities.NfcTag", b =>
+                {
+                    b.HasOne("_684BakOMeter.Web.Domain.Entities.Player", "Player")
+                        .WithMany("NfcTags")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("_684BakOMeter.Web.Domain.Entities.OneVsOneMatch", b =>
                 {
                     b.HasOne("_684BakOMeter.Web.Domain.Entities.ChugAttempt", "Player1Attempt")
@@ -211,6 +263,8 @@ namespace _684BakOMeter.Web.Migrations
                     b.Navigation("MatchesAsPlayer2");
 
                     b.Navigation("MatchesWon");
+
+                    b.Navigation("NfcTags");
                 });
 #pragma warning restore 612, 618
         }

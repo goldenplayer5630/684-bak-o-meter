@@ -21,4 +21,7 @@ public class Player
 
     /// <summary>All 1v1 matches this player has won.</summary>
     public ICollection<OneVsOneMatch> MatchesWon { get; set; } = new List<OneVsOneMatch>();
+
+    /// <summary>All NFC tags linked to this player for authentication.</summary>
+    public ICollection<NfcTag> NfcTags { get; set; } = new List<NfcTag>();
 }

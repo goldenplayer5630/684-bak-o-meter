@@ -22,38 +22,68 @@ public static class DbSeeder
             new Player { Name = "joost" },
             new Player { Name = "sven" },
             new Player { Name = "tom" },
+            new Player { Name = "milan" },
+            new Player { Name = "daan" },
+            new Player { Name = "stijn" },
+            new Player { Name = "bas" },
+            new Player { Name = "jeroen" },
+            new Player { Name = "thijs" },
+            new Player { Name = "kevin" },
+            new Player { Name = "nick" },
+            new Player { Name = "martijn" },
+            new Player { Name = "rob" },
         };
 
         db.Players.AddRange(players);
         db.SaveChanges();
 
-        var attempts = new List<ChugAttempt>
+        var attempts = new List<ChugAttempt>();
+        var random = new Random();
+        var chugTypes = Enum.GetValues<ChugType>();
+        var notes = new string?[]
         {
-            // Bak
-            new() { PlayerId = players[0].Id, StartedAt = now.AddHours(-5), EndedAt = now.AddHours(-5).AddMilliseconds(3200), DurationMs = 3200, ChugType = ChugType.Bak },
-            new() { PlayerId = players[1].Id, StartedAt = now.AddHours(-4), EndedAt = now.AddHours(-4).AddMilliseconds(2900), DurationMs = 2900, ChugType = ChugType.Bak },
-            new() { PlayerId = players[2].Id, StartedAt = now.AddHours(-3), EndedAt = now.AddHours(-3).AddMilliseconds(3500), DurationMs = 3500, ChugType = ChugType.Bak },
-            new() { PlayerId = players[3].Id, StartedAt = now.AddHours(-2), EndedAt = now.AddHours(-2).AddMilliseconds(4100), DurationMs = 4100, ChugType = ChugType.Bak },
-            // Pul
-            new() { PlayerId = players[0].Id, StartedAt = now.AddHours(-4), EndedAt = now.AddHours(-4).AddMilliseconds(4800), DurationMs = 4800, ChugType = ChugType.Pul },
-            new() { PlayerId = players[1].Id, StartedAt = now.AddHours(-3), EndedAt = now.AddHours(-3).AddMilliseconds(4200), DurationMs = 4200, ChugType = ChugType.Pul },
-            new() { PlayerId = players[4].Id, StartedAt = now.AddHours(-2), EndedAt = now.AddHours(-2).AddMilliseconds(5100), DurationMs = 5100, ChugType = ChugType.Pul },
-            // BakPlus
-            new() { PlayerId = players[2].Id, StartedAt = now.AddHours(-3), EndedAt = now.AddHours(-3).AddMilliseconds(2750), DurationMs = 2750, ChugType = ChugType.BakPlus },
-            new() { PlayerId = players[3].Id, StartedAt = now.AddHours(-2), EndedAt = now.AddHours(-2).AddMilliseconds(3100), DurationMs = 3100, ChugType = ChugType.BakPlus },
-            // IceFles
-            new() { PlayerId = players[2].Id, StartedAt = now.AddMinutes(-30), EndedAt = now.AddMinutes(-30).AddMilliseconds(1800), DurationMs = 1800, ChugType = ChugType.IceFles },
-            new() { PlayerId = players[0].Id, StartedAt = now.AddMinutes(-20), EndedAt = now.AddMinutes(-20).AddMilliseconds(2200), DurationMs = 2200, ChugType = ChugType.IceFles },
-            // SpaRood
-            new() { PlayerId = players[4].Id, StartedAt = now.AddMinutes(-15), EndedAt = now.AddMinutes(-15).AddMilliseconds(1500), DurationMs = 1500, ChugType = ChugType.SpaRood },
-            new() { PlayerId = players[1].Id, StartedAt = now.AddMinutes(-10), EndedAt = now.AddMinutes(-10).AddMilliseconds(1700), DurationMs = 1700, ChugType = ChugType.SpaRood },
-            // Pitcher
-            new() { PlayerId = players[1].Id, StartedAt = now.AddMinutes(-8), EndedAt = now.AddMinutes(-8).AddMilliseconds(5200), DurationMs = 5200, ChugType = ChugType.Pitcher },
-            new() { PlayerId = players[3].Id, StartedAt = now.AddMinutes(-5), EndedAt = now.AddMinutes(-5).AddMilliseconds(6100), DurationMs = 6100, ChugType = ChugType.Pitcher },
-            // Wijn
-            new() { PlayerId = players[0].Id, StartedAt = now.AddMinutes(-3), EndedAt = now.AddMinutes(-3).AddMilliseconds(3800), DurationMs = 3800, ChugType = ChugType.Wijn },
-            new() { PlayerId = players[4].Id, StartedAt = now.AddMinutes(-1), EndedAt = now.AddMinutes(-1).AddMilliseconds(4500), DurationMs = 4500, ChugType = ChugType.Wijn },
+            null,
+            null,
+            null,
+            "cold lager",
+            "foam start",
+            "clean finish",
+            "personal best",
+            "crowd favorite",
+            "fast pickup",
+            "late stumble"
         };
+
+        var totalAttempts = 500;
+
+        for (var i = 0; i < totalAttempts; i++)
+        {
+            var player = players[random.Next(players.Count)];
+            var duration = random.Next(1500, 7001);
+
+            var startedAt = now
+                .AddDays(-random.Next(0, 120))
+                .AddMinutes(-random.Next(0, 24 * 60))
+                .AddSeconds(-random.Next(0, 60));
+
+            attempts.Add(new ChugAttempt
+            {
+                PlayerId = player.Id,
+                StartedAt = startedAt,
+                EndedAt = startedAt.AddMilliseconds(duration),
+                DurationMs = duration,
+                ChugType = chugTypes[random.Next(chugTypes.Length)],
+                Notes = notes[random.Next(notes.Length)],
+                IsHighScore = false
+            });
+        }
+
+        // Mark the fastest attempt per player + chug type as the active high score.
+        foreach (var group in attempts.GroupBy(a => new { a.PlayerId, a.ChugType }))
+        {
+            var best = group.OrderBy(a => a.DurationMs).ThenBy(a => a.StartedAt).First();
+            best.IsHighScore = true;
+        }
 
         db.ChugAttempts.AddRange(attempts);
         db.SaveChanges();

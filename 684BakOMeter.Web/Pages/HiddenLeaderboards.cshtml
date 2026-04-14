@@ -1,0 +1,14 @@
+@page
+@model HiddenLeaderboardsModel
+@{
+    ViewData["Title"] = "???";
+}
+
+<div id="hidden-leaderboards-app"
+     data-chug-types='@Html.Raw(Model.ChugTypesJson)'
+     data-leaderboards='@Html.Raw(Model.LeaderboardsJson)'>
+</div>
+
+@section Scripts {
+    <script type="module" src="~/dist/hidden-leaderboards-main.js" asp-append-version="true"></script>
+}

@@ -12,9 +12,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // --- Repositories ---
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IChugAttemptRepository, ChugAttemptRepository>();
+builder.Services.AddScoped<INfcTagRepository, NfcTagRepository>();
 
 // --- Services ---
 builder.Services.AddScoped<PlayerService>();
+builder.Services.AddScoped<NfcService>();
 
 // --- MVC controllers (for the small API used by the Vue app) ---
 builder.Services.AddControllers();

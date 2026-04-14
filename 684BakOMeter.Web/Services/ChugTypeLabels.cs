@@ -5,6 +5,7 @@ namespace _684BakOMeter.Web.Services;
 /// <summary>Dutch display labels for chug types used in the arcade UI.</summary>
 public static class ChugTypeLabels
 {
+    /// <summary>All chug types with their display labels.</summary>
     public static readonly Dictionary<ChugType, string> All = new()
     {
         { ChugType.Bak,     "Bak" },
@@ -12,6 +13,23 @@ public static class ChugTypeLabels
         { ChugType.BakPlus, "Bak+" },
         { ChugType.IceFles, "Ice Fles" },
         { ChugType.SpaRood, "Spa Rood" },
+        { ChugType.Wijn,    "Wijn" },
+        { ChugType.Pitcher, "Pitcher" },
+    };
+
+    /// <summary>Chug types visible in the main menu and leaderboards.</summary>
+    public static readonly Dictionary<ChugType, string> Main = new()
+    {
+        { ChugType.Bak,     "Bak" },
+        { ChugType.Pul,     "Pul" },
+        { ChugType.BakPlus, "Bak+" },
+        { ChugType.IceFles, "Ice Fles" },
+        { ChugType.SpaRood, "Spa Rood" },
+    };
+
+    /// <summary>Hidden easter-egg chug types (Wijn, Pitcher).</summary>
+    public static readonly Dictionary<ChugType, string> Hidden = new()
+    {
         { ChugType.Wijn,    "Wijn" },
         { ChugType.Pitcher, "Pitcher" },
     };

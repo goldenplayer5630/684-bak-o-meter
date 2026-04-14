@@ -20,8 +20,8 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // Build chug types list
-        var types = ChugTypeLabels.All.Select(kv => new
+        // Build chug types list (main types only — Wijn/Pitcher are hidden)
+        var types = ChugTypeLabels.Main.Select(kv => new
         {
             slug = kv.Key.ToString(),
             label = kv.Value,
@@ -29,9 +29,9 @@ public class IndexModel : PageModel
 
         ChugTypesJson = JsonSerializer.Serialize(types);
 
-        // Build leaderboards for all types
+        // Build leaderboards for main types only
         var leaderboards = new Dictionary<string, object>();
-        foreach (var ct in Enum.GetValues<ChugType>())
+        foreach (var ct in ChugTypeLabels.Main.Keys)
         {
             var entries = await _attempts.GetLeaderboardAsync(ct, 10);
             leaderboards[ct.ToString()] = entries.Select((e, i) => new

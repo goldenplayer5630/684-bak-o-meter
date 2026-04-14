@@ -20,7 +20,8 @@ public class LeaderboardsModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var types = ChugTypeLabels.All.Select(kv => new
+        // Main types only — Wijn/Pitcher have a separate hidden leaderboard
+        var types = ChugTypeLabels.Main.Select(kv => new
         {
             slug = kv.Key.ToString(),
             label = kv.Value,
@@ -29,7 +30,7 @@ public class LeaderboardsModel : PageModel
         ChugTypesJson = JsonSerializer.Serialize(types);
 
         var leaderboards = new Dictionary<string, object>();
-        foreach (var ct in Enum.GetValues<ChugType>())
+        foreach (var ct in ChugTypeLabels.Main.Keys)
         {
             var entries = await _attempts.GetLeaderboardAsync(ct, 8);
             leaderboards[ct.ToString()] = entries.Select((e, i) => new

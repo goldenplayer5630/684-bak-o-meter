@@ -33,6 +33,9 @@ public class ChugAttempt
     /// <summary>Optional free-text notes (e.g. "cold lager", "personal best").</summary>
     public string? Notes { get; set; }
 
+    /// <summary>HIgh score</summary>
+    public bool IsHighScore { get; set; }   
+
     // --- 1v1 back-references (null when this is a solo attempt) ---
 
     /// <summary>Set when this attempt is Player 1's turn in a 1v1 match.</summary>
