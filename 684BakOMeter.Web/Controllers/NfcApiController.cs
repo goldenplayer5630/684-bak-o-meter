@@ -1,6 +1,5 @@
 using _684BakOMeter.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Concurrent;
 
 namespace _684BakOMeter.Web.Controllers;
 
@@ -9,18 +8,16 @@ namespace _684BakOMeter.Web.Controllers;
 public class NfcApiController : ControllerBase
 {
     private readonly NfcService _nfcService;
+    private readonly NfcScanBridge _scanBridge;
 
-    // Simple in-memory queue for NFC scan events.
-    // In production, replace with SignalR or a dedicated serial bridge service.
-    private static readonly ConcurrentQueue<string> _scanQueue = new();
-
-    public NfcApiController(NfcService nfcService)
+    public NfcApiController(NfcService nfcService, NfcScanBridge scanBridge)
     {
         _nfcService = nfcService;
+        _scanBridge = scanBridge;
     }
 
     /// <summary>
-    /// Called by the serial bridge when an NFC tag is physically scanned.
+    /// Called manually or by an external tool to simulate a tag scan.
     /// POST /api/nfc/push-scan  { "uid": "AB:CD:12:34" }
     /// </summary>
     [HttpPost("push-scan")]
@@ -29,7 +26,7 @@ public class NfcApiController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Uid))
             return BadRequest(new { error = "Tag UID is required." });
 
-        _scanQueue.Enqueue(request.Uid.Trim().ToUpperInvariant());
+        _scanBridge.Enqueue(request.Uid.Trim().ToUpperInvariant());
         return Ok(new { queued = true });
     }
 
@@ -40,7 +37,7 @@ public class NfcApiController : ControllerBase
     [HttpGet("poll-scan")]
     public IActionResult PollScan()
     {
-        if (_scanQueue.TryDequeue(out var uid))
+        if (_scanBridge.TryDequeue(out var uid))
             return Ok(new { uid });
 
         return Ok(new { uid = (string?)null });

@@ -11,11 +11,31 @@ public class NfcService
 {
     private readonly INfcTagRepository _nfcTags;
     private readonly IPlayerRepository _players;
+    private readonly ILogger<NfcService> _logger;
 
-    public NfcService(INfcTagRepository nfcTags, IPlayerRepository players)
+    public NfcService(INfcTagRepository nfcTags, IPlayerRepository players, ILogger<NfcService> logger)
     {
         _nfcTags = nfcTags;
         _players = players;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Handles an RFID/NFC tag scanned via the serial protocol.
+    /// Resolves the tag and logs whether a player was identified.
+    /// </summary>
+    public async Task HandleScannedTagAsync(string uid, CancellationToken ct = default)
+    {
+        var (tag, player, isKnown) = await ResolveTagAsync(uid);
+
+        if (!isKnown)
+        {
+            _logger.LogInformation("Unknown or inactive NFC tag scanned: {Uid}", uid);
+            return;
+        }
+
+        _logger.LogInformation("NFC tag {Uid} identified player: {PlayerName} (id {PlayerId})",
+            uid, player!.Name, player.Id);
     }
 
     /// <summary>

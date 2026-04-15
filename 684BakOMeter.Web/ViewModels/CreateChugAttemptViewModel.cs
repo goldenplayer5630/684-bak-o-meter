@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using _684BakOMeter.Web.Domain.Enums;
+using _684BakOMeter.Web.Domain.Entities;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace _684BakOMeter.Web.ViewModels;

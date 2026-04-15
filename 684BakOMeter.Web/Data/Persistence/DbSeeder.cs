@@ -1,5 +1,4 @@
 using _684BakOMeter.Web.Domain.Entities;
-using _684BakOMeter.Web.Domain.Enums;
 
 namespace _684BakOMeter.Web.Data.Persistence;
 

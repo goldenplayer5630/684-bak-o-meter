@@ -1,5 +1,7 @@
 using _684BakOMeter.Web.Data.Persistence;
 using _684BakOMeter.Web.Data.Repositories;
+using _684BakOMeter.Web.Infrastructure.IO;
+using _684BakOMeter.Web.Infrastructure.Protocol;
 using _684BakOMeter.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +19,13 @@ builder.Services.AddScoped<INfcTagRepository, NfcTagRepository>();
 // --- Services ---
 builder.Services.AddScoped<PlayerService>();
 builder.Services.AddScoped<NfcService>();
+builder.Services.AddScoped<ChugService>();
+builder.Services.AddSingleton<NfcScanBridge>();
+
+// --- Serial transport & protocol ---
+builder.Services.AddSingleton<ITransport, SerialPortTransport>();
+builder.Services.AddSingleton<ProtocolClient>();
+builder.Services.AddHostedService<ProtocolHostedService>();
 
 // --- MVC controllers (for the small API used by the Vue app) ---
 builder.Services.AddControllers();

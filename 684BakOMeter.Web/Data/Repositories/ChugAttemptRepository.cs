@@ -1,6 +1,5 @@
 using _684BakOMeter.Web.Data.Persistence;
 using _684BakOMeter.Web.Domain.Entities;
-using _684BakOMeter.Web.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace _684BakOMeter.Web.Data.Repositories;

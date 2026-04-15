@@ -1,6 +1,5 @@
 using _684BakOMeter.Web.Data.Persistence.Converters;
 using _684BakOMeter.Web.Domain.Entities;
-using _684BakOMeter.Web.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

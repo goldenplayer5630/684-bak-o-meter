@@ -1,4 +1,4 @@
-﻿namespace _684BakOMeter.Web.Domain.Enums
+﻿namespace _684BakOMeter.Web.Domain.Entities
 {
     public enum ChugType
     {

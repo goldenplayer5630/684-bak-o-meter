@@ -1,5 +1,5 @@
 using _684BakOMeter.Web.Data.Repositories;
-using _684BakOMeter.Web.Domain.Enums;
+using _684BakOMeter.Web.Domain.Entities;
 using _684BakOMeter.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
