@@ -74,10 +74,11 @@
             <template v-if="!isMultiplayer">
                 <div class="result-player mt-2">{{ playerName1 }}</div>
                 <TimerDisplay :elapsed="chugElapsed1" :state="timer1State" />
-                <div v-if="scale1State.state !== 'Completed'" class="arcade-prompt mt-3" :class="{ 'arcade-blink': scale1State.state !== 'Running' }">
+                <div v-if="scale1State.state !== 'Completed'" class="arcade-prompt mt-3" :class="{ 'arcade-blink': scale1State.state !== 'Running' && scale1State.state !== 'Validating' }">
                     <span v-if="scale1State.state === 'WaitingForFull'">PLAATS EEN VOLLE BAK</span>
                     <span v-if="scale1State.state === 'Ready'">TREK EEN BAK!</span>
                     <span v-if="scale1State.state === 'Running'">ZUIPEN MET JE DONDER!</span>
+                    <span v-if="scale1State.state === 'Validating'">VALIDEREN...</span>
                 </div>
             </template>
 
@@ -98,6 +99,7 @@
                     <span v-if="bothWaiting">PLAATS JULLIE VOLLE BAKKEN</span>
                     <span v-if="bothReady">TREK EEN BAK!</span>
                     <span v-if="anyRunning">ZUIPEN MET JE DONDER!</span>
+                    <span v-if="anyValidating">VALIDEREN...</span>
                 </div>
             </template>
         </template>
@@ -188,13 +190,13 @@ const chugElapsed2 = computed(() => chugHub.elapsed2.value);
 const timer1State = computed(() => {
     const s = scale1State.value.state;
     if (s === 'Running') return 'running';
-    if (s === 'Completed') return 'stopped';
+    if (s === 'Completed' || s === 'Validating') return 'stopped';
     return 'idle';
 });
 const timer2State = computed(() => {
     const s = scale2State.value.state;
     if (s === 'Running') return 'running';
-    if (s === 'Completed') return 'stopped';
+    if (s === 'Completed' || s === 'Validating') return 'stopped';
     return 'idle';
 });
 
@@ -202,6 +204,7 @@ const timer2State = computed(() => {
 const bothWaiting = computed(() => scale1State.value.state === 'WaitingForFull' || scale2State.value.state === 'WaitingForFull');
 const bothReady = computed(() => scale1State.value.state === 'Ready' && scale2State.value.state === 'Ready');
 const anyRunning = computed(() => scale1State.value.state === 'Running' || scale2State.value.state === 'Running');
+const anyValidating = computed(() => (scale1State.value.state === 'Validating' || scale2State.value.state === 'Validating') && !anyRunning.value);
 const bothCompleted = computed(() => scale1State.value.state === 'Completed' && scale2State.value.state === 'Completed');
 
 // Result-screen elapsed values (frozen on completion)

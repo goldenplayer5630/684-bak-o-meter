@@ -121,39 +121,65 @@ public class ChugService
                 }, ct);
                 break;
 
-            // Glass placed back — compare to the weight when it was lifted
+            // Glass placed back — enter validating state (3-second settle period)
             case ChugSessionState.Running when avg >= _config.EmptyThreshold:
             {
-                var liftWeight = session.LiftWeight ?? _config.FullThreshold;
-                var isStillFull = avg > liftWeight - 1000m;
-
-                if (isStillFull)
-                {
-                    session.MarkInvalid();
-                    _logger.LogInformation("Session {Id}: Glass placed back at ~same weight — invalid! (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, avg, liftWeight);
-                    await _hubContext.Clients.All.SendAsync("ChugInvalid", new
-                    {
-                        sessionId = session.SessionId,
-                        scaleNumber = session.ScaleNumber,
-                        playerId = session.PlayerId,
-                    }, ct);
-                }
-                else
-                {
-                    session.MarkCompleted();
-                    _logger.LogInformation("Session {Id}: Lighter glass back — completed! Duration={Duration}ms (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, session.DurationMs, avg, liftWeight);
-                    await _hubContext.Clients.All.SendAsync("ChugCompleted", new
-                    {
-                        sessionId = session.SessionId,
-                        scaleNumber = session.ScaleNumber,
-                        playerId = session.PlayerId,
-                        durationMs = session.DurationMs,
-                        startTime = session.StartTime,
-                        endTime = session.EndTime,
-                    }, ct);
-                }
+                session.State = ChugSessionState.Validating;
+                session.MarkCompleted(); // freeze the timer now
+                _logger.LogInformation("Session {Id}: Glass placed back — validating... (avg={Avg:F0})", session.SessionId, avg);
+                _ = ValidateAfterDelayAsync(session, ct);
                 break;
             }
+
+            // While validating, ignore further measurements
+            case ChugSessionState.Validating:
+                break;
+        }
+
+        await SendUpdateAsync(session, ct);
+    }
+
+    /// <summary>Waits 3 seconds then validates the chug based on the settled weight.</summary>
+    private async Task ValidateAfterDelayAsync(ChugSession session, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        // Re-check the settled average after the delay
+        var avg = session.CurrentAverage;
+        var liftWeight = session.LiftWeight ?? _config.FullThreshold;
+        var isStillFull = avg > liftWeight - 1000m;
+
+        if (isStillFull)
+        {
+            session.MarkInvalid();
+            _logger.LogInformation("Session {Id}: Validated — glass still full — invalid! (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, avg, liftWeight);
+            await _hubContext.Clients.All.SendAsync("ChugInvalid", new
+            {
+                sessionId = session.SessionId,
+                scaleNumber = session.ScaleNumber,
+                playerId = session.PlayerId,
+            }, ct);
+        }
+        else
+        {
+            session.State = ChugSessionState.Completed;
+            _logger.LogInformation("Session {Id}: Validated — completed! Duration={Duration}ms (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, session.DurationMs, avg, liftWeight);
+            await _hubContext.Clients.All.SendAsync("ChugCompleted", new
+            {
+                sessionId = session.SessionId,
+                scaleNumber = session.ScaleNumber,
+                playerId = session.PlayerId,
+                durationMs = session.DurationMs,
+                startTime = session.StartTime,
+                endTime = session.EndTime,
+            }, ct);
         }
 
         await SendUpdateAsync(session, ct);

@@ -12,6 +12,9 @@ public enum ChugSessionState
     /// <summary>Glass lifted — timer is running.</summary>
     Running,
 
+    /// <summary>Glass placed back — validating the chug (3-second settle period).</summary>
+    Validating,
+
     /// <summary>Empty glass placed back — chug completed.</summary>
     Completed,
 
