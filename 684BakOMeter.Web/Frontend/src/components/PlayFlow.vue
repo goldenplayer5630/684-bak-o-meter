@@ -73,11 +73,11 @@
             <!-- Singleplayer -->
             <template v-if="!isMultiplayer">
                 <div class="result-player mt-2">{{ playerName1 }}</div>
-                <TimerDisplay :elapsed="elapsed1" :state="timerState" />
-                <div class="arcade-prompt mt-3" :class="{ 'arcade-blink': timerState !== 'running' }">
-                    <span v-if="timerState === 'idle'">DRUK OP SPATIE OM TE STARTEN</span>
-                    <span v-if="timerState === 'running'">DRUK OP SPATIE OM TE STOPPEN</span>
-                    <span v-if="timerState === 'stopped'">OPSLAAN...</span>
+                <TimerDisplay :elapsed="chugElapsed1" :state="timer1State" />
+                <div v-if="scale1State.state !== 'Completed'" class="arcade-prompt mt-3" :class="{ 'arcade-blink': scale1State.state !== 'Running' }">
+                    <span v-if="scale1State.state === 'WaitingForFull'">PLAATS EEN VOLLE BAK</span>
+                    <span v-if="scale1State.state === 'Ready'">TREK EEN BAK!</span>
+                    <span v-if="scale1State.state === 'Running'">ZUIPEN MET JE DONDER!</span>
                 </div>
             </template>
 
@@ -86,20 +86,18 @@
                 <div class="mp-timers">
                     <div class="mp-timer-col">
                         <div class="result-player">{{ playerName1 }}</div>
-                        <TimerDisplay :elapsed="elapsed1" :state="mp1State" />
+                        <TimerDisplay :elapsed="chugElapsed1" :state="timer1State" />
                     </div>
                     <div class="mp-vs">VS</div>
                     <div class="mp-timer-col">
                         <div class="result-player">{{ playerName2 }}</div>
-                        <TimerDisplay :elapsed="elapsed2" :state="mp2State" />
+                        <TimerDisplay :elapsed="chugElapsed2" :state="timer2State" />
                     </div>
                 </div>
-                <div class="arcade-prompt mt-3" :class="{ 'arcade-blink': !mpRunning }">
-                    <span v-if="mpPhase === 'p1ready'">{{ playerName1.toUpperCase() }}: DRUK OP SPATIE</span>
-                    <span v-if="mpPhase === 'p1running'">{{ playerName1.toUpperCase() }}: DRUK OP SPATIE OM TE STOPPEN</span>
-                    <span v-if="mpPhase === 'p2ready'">{{ playerName2.toUpperCase() }}: DRUK OP SPATIE</span>
-                    <span v-if="mpPhase === 'p2running'">{{ playerName2.toUpperCase() }}: DRUK OP SPATIE OM TE STOPPEN</span>
-                    <span v-if="mpPhase === 'done'">OPSLAAN...</span>
+                <div v-if="!bothCompleted" class="arcade-prompt mt-3" :class="{ 'arcade-blink': !anyRunning }">
+                    <span v-if="bothWaiting">PLAATS JULLIE VOLLE BAKKEN</span>
+                    <span v-if="bothReady">TREK EEN BAK!</span>
+                    <span v-if="anyRunning">ZUIPEN MET JE DONDER!</span>
                 </div>
             </template>
         </template>
@@ -137,30 +135,38 @@
                 <div class="result-countdown">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
             </div>
         </template>
+
+        <!-- STEP: Invalid (full glass placed back) -->
+        <template v-if="step === 'invalid'">
+            <div class="result-screen">
+                <div class="result-title arcade-blink" style="color: #ff4081;">ONGELDIG!</div>
+                <div class="arcade-prompt mt-3">LAFFE BORRELAAR!<br>JE MAG GEEN VOL GLAS TERUG ZETTEN</div>
+                <div class="result-countdown mt-3">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
+            </div>
+        </template>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import TimerDisplay from './TimerDisplay.vue';
 import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { useKeyController } from '../composables/useKeyController.js';
+import { useChugHub } from '../composables/useChugHub.js';
 
 const props = defineProps({
     chugTypeSlug: { type: String, default: 'Bak' },
     chugTypeLabel: { type: String, default: 'Bak' },
 });
 
-const diabolo = useDiaboloMode();
+const chugHub = useChugHub();
 
 // --- Flow ---
-// Starts at mode selection; NFC scans happen after mode is chosen
 const step = ref('mode');
 const modeIndex = ref(0);
 const isMultiplayer = ref(false);
 
-// Holds the scanned tag UID while waiting for user creation
 const pendingTagUid = ref('');
 
 // --- Player data (resolved via NFC) ---
@@ -169,21 +175,35 @@ const playerName2 = ref('');
 let player1Id = null;
 let player2Id = null;
 
-// --- Timer (single) ---
-const timerState = ref('idle');
+// --- Scale state (driven by SignalR) ---
+const scale1State = computed(() => chugHub.scale1.value);
+const scale2State = computed(() => chugHub.scale2.value);
+const chugElapsed1 = computed(() => chugHub.elapsed1.value);
+const chugElapsed2 = computed(() => chugHub.elapsed2.value);
+
+// Map scale states to TimerDisplay state prop
+const timer1State = computed(() => {
+    const s = scale1State.value.state;
+    if (s === 'Running') return 'running';
+    if (s === 'Completed') return 'stopped';
+    return 'idle';
+});
+const timer2State = computed(() => {
+    const s = scale2State.value.state;
+    if (s === 'Running') return 'running';
+    if (s === 'Completed') return 'stopped';
+    return 'idle';
+});
+
+// Multiplayer prompt helpers
+const bothWaiting = computed(() => scale1State.value.state === 'WaitingForFull' || scale2State.value.state === 'WaitingForFull');
+const bothReady = computed(() => scale1State.value.state === 'Ready' && scale2State.value.state === 'Ready');
+const anyRunning = computed(() => scale1State.value.state === 'Running' || scale2State.value.state === 'Running');
+const bothCompleted = computed(() => scale1State.value.state === 'Completed' && scale2State.value.state === 'Completed');
+
+// Result-screen elapsed values (frozen on completion)
 const elapsed1 = ref(0);
-let startTime1 = 0;
-let timerInterval1 = null;
-
-// --- Timer (multi) ---
-const mpPhase = ref('p1ready');
-const mp1State = ref('idle');
-const mp2State = ref('idle');
 const elapsed2 = ref(0);
-let startTime2 = 0;
-let timerInterval2 = null;
-
-const mpRunning = computed(() => mpPhase.value === 'p1running' || mpPhase.value === 'p2running');
 
 // --- Result ---
 const resultCountdown = ref(10);
@@ -289,54 +309,56 @@ function selectMode(i) {
     }
 }
 
-function startChug() {
-    step.value = 'chug';
-    timerState.value = 'idle';
-    mpPhase.value = 'p1ready';
-    mp1State.value = 'idle';
-    mp2State.value = 'idle';
+let completedScales = 0;
+
+async function startChug() {
+    chugHub.reset();
     elapsed1.value = 0;
     elapsed2.value = 0;
+    completedScales = 0;
+    step.value = 'chug';
+
+    await chugHub.connect(onChugCompleted, onChugInvalid);
+
+    // Start session(s) on the backend
+    await fetch('/api/chug/start-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: player1Id, chugType: props.chugTypeSlug, scaleNumber: 1 }),
+    });
+
+    if (isMultiplayer.value) {
+        await fetch('/api/chug/start-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId: player2Id, chugType: props.chugTypeSlug, scaleNumber: 2 }),
+        });
+    }
+}
+
+function onChugCompleted(data) {
+    if (data.scaleNumber === 1) elapsed1.value = data.durationMs;
+    if (data.scaleNumber === 2) elapsed2.value = data.durationMs;
+
+    if (!isMultiplayer.value) {
+        saveAndShowResult();
+    } else {
+        completedScales++;
+        if (completedScales >= 2) saveAndShowResult();
+    }
+}
+
+function onChugInvalid(data) {
+    // Don't save — just show the shame message and go back to menu
+    step.value = 'invalid';
+    resultCountdown.value = 10;
+    resultInterval = setInterval(() => {
+        resultCountdown.value--;
+        if (resultCountdown.value <= 0) { clearInterval(resultInterval); window.location.href = '/'; }
+    }, 1000);
 }
 
 function goBack() { window.location.href = '/'; }
-
-// --- Chug logic ---
-function handleChugSpace() {
-    if (!isMultiplayer.value) {
-        if (timerState.value === 'idle') {
-            timerState.value = 'running';
-            startTime1 = performance.now();
-            timerInterval1 = setInterval(() => {
-                elapsed1.value = Math.round(performance.now() - startTime1);
-            }, 31);
-        } else if (timerState.value === 'running') {
-            timerState.value = 'stopped';
-            elapsed1.value = Math.round(performance.now() - startTime1);
-            clearInterval(timerInterval1);
-            saveAndShowResult();
-        }
-    } else {
-        if (mpPhase.value === 'p1ready') {
-            mpPhase.value = 'p1running'; mp1State.value = 'running';
-            startTime1 = performance.now();
-            timerInterval1 = setInterval(() => { elapsed1.value = Math.round(performance.now() - startTime1); }, 31);
-        } else if (mpPhase.value === 'p1running') {
-            mpPhase.value = 'p2ready'; mp1State.value = 'stopped';
-            elapsed1.value = Math.round(performance.now() - startTime1);
-            clearInterval(timerInterval1);
-        } else if (mpPhase.value === 'p2ready') {
-            mpPhase.value = 'p2running'; mp2State.value = 'running';
-            startTime2 = performance.now();
-            timerInterval2 = setInterval(() => { elapsed2.value = Math.round(performance.now() - startTime2); }, 31);
-        } else if (mpPhase.value === 'p2running') {
-            mpPhase.value = 'done'; mp2State.value = 'stopped';
-            elapsed2.value = Math.round(performance.now() - startTime2);
-            clearInterval(timerInterval2);
-            saveAndShowResult();
-        }
-    }
-}
 
 async function saveAndShowResult() {
     try {
@@ -388,27 +410,20 @@ function spawnConfetti() {
 }
 
 // --- Keyboard ---
-function onKeyDown(e) {
-    diabolo.feedKey(e.code);
-
-    if (step.value === 'mode') {
-        if (e.code === 'ArrowUp') { e.preventDefault(); modeIndex.value = Math.max(0, modeIndex.value - 1); }
-        else if (e.code === 'ArrowDown') { e.preventDefault(); modeIndex.value = Math.min(2, modeIndex.value + 1); }
-        else if (e.code === 'Space' || e.code === 'Enter') {
-            e.preventDefault();
+useKeyController({
+    onEscape: () => { if (step.value === 'mode') goBack(); },
+    onUp: () => { if (step.value === 'mode') modeIndex.value = Math.max(0, modeIndex.value - 1); },
+    onDown: () => { if (step.value === 'mode') modeIndex.value = Math.min(2, modeIndex.value + 1); },
+    onActivate: () => {
+        if (step.value === 'mode') {
             if (modeIndex.value === 2) goBack();
             else selectMode(modeIndex.value);
-        } else if (e.code === 'Escape') { goBack(); }
-    } else if (step.value === 'chug') {
-        if (e.code === 'Space') { e.preventDefault(); handleChugSpace(); }
-    }
-}
+        }
+    },
+});
 
-onMounted(() => { document.addEventListener('keydown', onKeyDown); });
 onUnmounted(() => {
-    document.removeEventListener('keydown', onKeyDown);
-    if (timerInterval1) clearInterval(timerInterval1);
-    if (timerInterval2) clearInterval(timerInterval2);
+    chugHub.disconnect();
     if (resultInterval) clearInterval(resultInterval);
 });
 </script>

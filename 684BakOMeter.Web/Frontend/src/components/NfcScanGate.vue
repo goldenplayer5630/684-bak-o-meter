@@ -30,13 +30,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { useKeyController } from '../composables/useKeyController.js';
 
 const emit = defineEmits(['scanned', 'back']);
 
 const error = ref('');
-const diabolo = useDiaboloMode();
 let pollInterval = null;
+
+useKeyController({
+    onEscape: () => emit('back'),
+});
 
 // Poll the backend for NFC scan events.
 // In a production system this would use WebSocket/SignalR from the serial reader.
@@ -67,25 +70,8 @@ function stopPolling() {
     }
 }
 
-// Also listen for keyboard shortcut to simulate NFC scan during development
-function onKeyDown(e) {
-    diabolo.feedKey(e.code);
-
-    if (e.code === 'Escape') {
-        e.preventDefault();
-        emit('back');
-    }
-}
-
-onMounted(() => {
-    startPolling();
-    document.addEventListener('keydown', onKeyDown);
-});
-
-onUnmounted(() => {
-    stopPolling();
-    document.removeEventListener('keydown', onKeyDown);
-});
+onMounted(() => { startPolling(); });
+onUnmounted(() => { stopPolling(); });
 </script>
 
 <style scoped>

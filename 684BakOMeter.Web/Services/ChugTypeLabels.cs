@@ -1,4 +1,4 @@
-using _684BakOMeter.Web.Domain.Enums;
+using _684BakOMeter.Web.Domain.Entities;
 
 namespace _684BakOMeter.Web.Services;
 

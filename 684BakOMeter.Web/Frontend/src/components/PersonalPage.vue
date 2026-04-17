@@ -89,12 +89,11 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import ManageNfcTags from './ManageNfcTags.vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { useKeyController } from '../composables/useKeyController.js';
 
 // --- Phase control ---
 const phase = ref('scan');
 const pendingTagUid = ref('');
-const diabolo = useDiaboloMode();
 
 // --- Player ---
 const playerId = ref(0);
@@ -304,28 +303,18 @@ function rankClass(rank) {
 
 function goBack() { window.location.href = '/'; }
 
-// Keyboard
-function onKey(e) {
-    diabolo.feedKey(e.code);
-
-    if (e.code === 'Escape') { e.preventDefault(); goBack(); return; }
-
-    if (phase.value !== 'profile') return;
-
-    const n = chugTypes.value.length;
-    if (n === 0) return;
-
-    if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        pickTab((tabIdx.value + 1) % n);
-    } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
+useKeyController({
+    onEscape: () => goBack(),
+    onRight: () => {
+        if (phase.value !== 'profile' || chugTypes.value.length === 0) return;
+        pickTab((tabIdx.value + 1) % chugTypes.value.length);
+    },
+    onLeft: () => {
+        if (phase.value !== 'profile' || chugTypes.value.length === 0) return;
+        const n = chugTypes.value.length;
         pickTab((tabIdx.value - 1 + n) % n);
-    }
-}
-
-onMounted(() => document.addEventListener('keydown', onKey));
-onUnmounted(() => document.removeEventListener('keydown', onKey));
+    },
+});
 </script>
 
 <style scoped>

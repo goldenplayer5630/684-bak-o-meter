@@ -24,16 +24,16 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue';
 import VolumeSettings from './VolumeSettings.vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { useDifferentBgMode } from '../composables/useDifferentBgMode.js';
 
 function goBack() {
     window.location.href = '/';
 }
 
-const diabolo = useDiaboloMode();
+const bgMode = useDifferentBgMode();
 
 function onKeyDown(e) {
-    diabolo.feedKey(e.code);
+    bgMode.feedKey(e.code);
 
     if (e.code === 'Escape') {
         e.preventDefault();

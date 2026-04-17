@@ -59,7 +59,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useIdleTimeout } from '../composables/useIdleTimeout.js';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { useKeyController } from '../composables/useKeyController.js';
 
 // --- SVG icon paths (inline, no emoji dependency) ---
 const ICONS = {
@@ -77,7 +77,10 @@ const props = defineProps({
 // --- Secret codes ---
 const SECRET_SEQ684 = ['Digit6', 'Digit8', 'Digit4'];
 const secretBuffer684 = [];
-const diabolo = useDiaboloMode();
+
+const SECRET_CONFIG = ['KeyC', 'KeyO', 'KeyN', 'KeyF', 'KeyI', 'KeyG'];
+const secretBufferConfig = [];
+let configTimeout = null;
 
 // --- State ---
 const phase = ref('attract');
@@ -199,60 +202,51 @@ function checkSecrets(code) {
         return;
     }
 
-    // 666 → diabolo mode toggle
-    diabolo.feedKey(code);
+    // config → calibration wizard
+    clearTimeout(configTimeout);
+    secretBufferConfig.push(code);
+    if (secretBufferConfig.length > SECRET_CONFIG.length) secretBufferConfig.shift();
+    if (secretBufferConfig.length === SECRET_CONFIG.length && secretBufferConfig.every((k, i) => k === SECRET_CONFIG[i])) {
+        window.location.href = '/config';
+        return;
+    }
+    configTimeout = setTimeout(() => { secretBufferConfig.length = 0; }, 10000);
 }
 
 // --- Keyboard ---
-function onKeyDown(e) {
-    checkSecrets(e.code);
-
-
-    if (phase.value === 'attract') {
-        if (e.code === 'Space' || e.code === 'Enter') {
-            e.preventDefault();
-            showMenu();
-        }
-        return;
-    }
-
-    if (phase.value === 'menu') {
-        const total = menuItems.value.length;
-        let idx = selectedIndex.value;
-
-        if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
-            e.preventDefault();
-            idx = (idx + 1) % total;
-        } else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
-            e.preventDefault();
-            idx = (idx - 1 + total) % total;
-        } else if (e.code === 'Space' || e.code === 'Enter') {
-            e.preventDefault();
-            activateItem(idx);
-            return;
-        } else if (e.code === 'Escape') {
-            e.preventDefault();
-            startAttract();
-            return;
-        } else {
-            return;
-        }
-
-        selectedIndex.value = idx;
+useKeyController({
+    feedSecrets: (code) => checkSecrets(code),
+    onActivate: () => {
+        if (phase.value === 'attract') { showMenu(); return; }
+        if (phase.value === 'menu') { activateItem(selectedIndex.value); idleTimeout.reset(); }
+    },
+    onEscape: () => {
+        if (phase.value === 'menu') startAttract();
+    },
+    onDown: () => {
+        if (phase.value !== 'menu') return;
+        selectedIndex.value = (selectedIndex.value + 1) % menuItems.value.length;
         idleTimeout.reset();
-    }
-}
-
-onMounted(() => {
-    startAttract();
-    document.addEventListener('keydown', onKeyDown);
+    },
+    onUp: () => {
+        if (phase.value !== 'menu') return;
+        selectedIndex.value = (selectedIndex.value - 1 + menuItems.value.length) % menuItems.value.length;
+        idleTimeout.reset();
+    },
+    onRight: () => {
+        if (phase.value !== 'menu') return;
+        selectedIndex.value = (selectedIndex.value + 1) % menuItems.value.length;
+        idleTimeout.reset();
+    },
+    onLeft: () => {
+        if (phase.value !== 'menu') return;
+        selectedIndex.value = (selectedIndex.value - 1 + menuItems.value.length) % menuItems.value.length;
+        idleTimeout.reset();
+    },
 });
 
-onUnmounted(() => {
-    stopAttract();
-    idleTimeout.stop();
-    document.removeEventListener('keydown', onKeyDown);
-});
+onMounted(() => { startAttract(); });
+onUnmounted(() => { stopAttract(); idleTimeout.stop(); });
 </script>
 
 <style scoped>

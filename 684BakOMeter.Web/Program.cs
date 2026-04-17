@@ -1,5 +1,6 @@
 using _684BakOMeter.Web.Data.Persistence;
 using _684BakOMeter.Web.Data.Repositories;
+using _684BakOMeter.Web.Hubs;
 using _684BakOMeter.Web.Infrastructure.IO;
 using _684BakOMeter.Web.Infrastructure.Protocol;
 using _684BakOMeter.Web.Services;
@@ -19,8 +20,12 @@ builder.Services.AddScoped<INfcTagRepository, NfcTagRepository>();
 // --- Services ---
 builder.Services.AddScoped<PlayerService>();
 builder.Services.AddScoped<NfcService>();
-builder.Services.AddScoped<ChugService>();
+builder.Services.AddSingleton<CalibrationService>();
+builder.Services.AddSingleton<ChugService>();
 builder.Services.AddSingleton<NfcScanBridge>();
+
+// --- SignalR ---
+builder.Services.AddSignalR();
 
 // --- Serial transport & protocol ---
 builder.Services.AddSingleton<ITransport, SerialPortTransport>();
@@ -59,5 +64,6 @@ app.UseAuthorization();
 
 app.MapControllers();   // API endpoints for the Vue app
 app.MapRazorPages();    // Razor Pages
+app.MapHub<ChugHub>("/hubs/chug"); // SignalR hub for live chug updates
 
 app.Run();

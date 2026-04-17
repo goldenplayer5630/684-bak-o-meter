@@ -63,7 +63,7 @@ body {
     position: fixed;
     inset: 0;
     background: url('/images/demos-logo.png') no-repeat center center / contain;
-    opacity: 0.07;
+    opacity: 0.20;
     pointer-events: none;
     z-index: 0;
 }
@@ -75,7 +75,7 @@ body.diabolo-mode.arcade-body {
 }
 body.diabolo-mode.arcade-body::before {
     background-image: url('/images/geheim-logo.png');
-    opacity: 0.12;
+    opacity: 0.30;
     z-index: 9999; /* above the corner, same layer as scanlines */
 }
 .diabolo-corner {
@@ -89,9 +89,6 @@ body.diabolo-mode.arcade-body::before {
     z-index: 9998;
     pointer-events: none;
 }
-body.diabolo-mode .diabolo-corner {
-    display: block;
-}
 
 /* klc / lion mode easter egg */
 body.lion-mode.arcade-body {
@@ -102,8 +99,60 @@ body.lion-mode.arcade-body::before {
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center center;
-    opacity: 0.18;
+    opacity: 0.25;
     filter: invert(1);
+    z-index: 9999;
+}
+
+/* dms / demos mode easter egg */
+body.demos-mode.arcade-body {
+    background-image: none !important;
+}
+body.demos-mode.arcade-body::before {
+    background-image: url('/images/demos.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.25;
+    z-index: 9999;
+}
+
+/* 427 / dysis mode easter egg */
+body.dysis-mode.arcade-body {
+    background-image: none !important;
+}
+body.dysis-mode.arcade-body::before {
+    background-image: url('/images/nog-een-geheim-logo.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.25;
+    z-index: 9999;
+}
+
+/* kwaak mode easter egg */
+body.kwaak-mode.arcade-body {
+    background-image: none !important;
+}
+body.kwaak-mode.arcade-body::before {
+    background-image: url('/images/kwaak.jpeg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.25;
+    z-index: 9999;
+}
+
+/* kompas mode easter egg */
+body.kompas-mode.arcade-body {
+    background-image: none !important;
+}
+body.kompas-mode.arcade-body::before {
+    background-image: url('/images/kompas.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.25;
     z-index: 9999;
 }
 

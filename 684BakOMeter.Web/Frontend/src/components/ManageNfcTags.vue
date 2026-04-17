@@ -11,27 +11,6 @@
 
         <!-- Normal list mode -->
         <template v-else>
-            <div v-if="loading" class="nfc-loading mt-1">Laden...</div>
-
-            <div v-else-if="tags.length === 0" class="nfc-empty mt-1">
-                Geen NFC tags gekoppeld.
-            </div>
-
-            <div v-else class="nfc-tag-list mt-1">
-                <div v-for="tag in tags" :key="tag.id" class="nfc-tag-row">
-                    <span class="nfc-tag-uid">{{ tag.uid }}</span>
-                    <span v-if="tag.label" class="nfc-tag-label">{{ tag.label }}</span>
-                    <button v-if="tags.length > 1"
-                            class="nfc-tag-remove"
-                            @click="removeTag(tag.id)"
-                            :disabled="removing">
-                        ✕
-                    </button>
-                </div>
-            </div>
-
-            <div v-if="error" class="nfc-error mt-1">{{ error }}</div>
-
             <div class="arcade-menu arcade-menu--narrow mt-2">
                 <button class="arcade-btn arcade-btn--primary"
                         @click="adding = true">

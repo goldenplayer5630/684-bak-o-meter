@@ -67,8 +67,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { ref, computed, onMounted } from 'vue';
+import { useKeyController } from '../composables/useKeyController.js';
 
 const PER_PAGE = 8;
 
@@ -76,8 +76,6 @@ const props = defineProps({
     chugTypes:    { type: Array,  default: () => [] },
     leaderboards: { type: Object, default: () => ({}) },
 });
-
-const diabolo = useDiaboloMode();
 
 // focus zones: 'tab' | 'pager' | 'back'
 const tabIdx  = ref(0);
@@ -134,55 +132,39 @@ function rankClass(r) {
 }
 
 // Keyboard — focus flow: tab ↔ pager ↔ back
-// ←/→ on tab = switch chug type
-// Space/Enter = activate
-// Esc = go home
-function onKey(e) {
-    diabolo.feedKey(e.code);
-
-    const n      = props.chugTypes.length;
-    const paging = pages.value > 1;
-    const f      = focus.value;
-
-    if (e.code === 'Escape') { e.preventDefault(); goBack(); return; }
-
-    if (f === 'back') {
-        if (e.code === 'ArrowUp') {
-            e.preventDefault();
-            focus.value = paging ? 'pager' : 'tab';
-        } else if (e.code === 'Space' || e.code === 'Enter') {
-            e.preventDefault(); goBack();
-        }
-        return;
-    }
-
-    if (f === 'pager') {
-        if (e.code === 'ArrowDown')  { e.preventDefault(); focus.value = 'back'; }
-        else if (e.code === 'ArrowUp') { e.preventDefault(); focus.value = 'tab'; }
-        else if (e.code === 'Space' || e.code === 'Enter') {
-            e.preventDefault(); go((page.value % pages.value) + 1);
-        }
-        return;
-    }
-
-    // 'tab' zone
-    if (n === 0) return;
-    if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        tabIdx.value = (tabIdx.value + 1) % n;
-        load(tabIdx.value, 1);
-    } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
+useKeyController({
+    onEscape: () => goBack(),
+    onUp: () => {
+        const f = focus.value;
+        if (f === 'back') focus.value = pages.value > 1 ? 'pager' : 'tab';
+        else if (f === 'pager') focus.value = 'tab';
+    },
+    onDown: () => {
+        const f = focus.value;
+        const paging = pages.value > 1;
+        if (f === 'tab') focus.value = paging ? 'pager' : 'back';
+        else if (f === 'pager') focus.value = 'back';
+    },
+    onLeft: () => {
+        if (focus.value !== 'tab' || props.chugTypes.length === 0) return;
+        const n = props.chugTypes.length;
         tabIdx.value = (tabIdx.value - 1 + n) % n;
         load(tabIdx.value, 1);
-    } else if (e.code === 'ArrowDown') {
-        e.preventDefault();
-        focus.value = paging ? 'pager' : 'back';
-    }
-}
+    },
+    onRight: () => {
+        if (focus.value !== 'tab' || props.chugTypes.length === 0) return;
+        const n = props.chugTypes.length;
+        tabIdx.value = (tabIdx.value + 1) % n;
+        load(tabIdx.value, 1);
+    },
+    onActivate: () => {
+        const f = focus.value;
+        if (f === 'back') goBack();
+        else if (f === 'pager') go((page.value % pages.value) + 1);
+    },
+});
 
 onMounted(() => {
-    document.addEventListener('keydown', onKey);
     if (props.chugTypes.length > 0) {
         const slug = props.chugTypes[0].slug;
         const seed = props.leaderboards[slug];
@@ -190,7 +172,6 @@ onMounted(() => {
         fetchPage(slug, 1);
     }
 });
-onUnmounted(() => document.removeEventListener('keydown', onKey));
 </script>
 
 <style scoped>

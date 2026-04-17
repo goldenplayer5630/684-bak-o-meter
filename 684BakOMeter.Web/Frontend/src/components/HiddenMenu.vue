@@ -27,8 +27,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useDiaboloMode } from '../composables/useDiaboloMode.js';
+import { ref, computed } from 'vue';
+import { useKeyController } from '../composables/useKeyController.js';
 
 const ICONS = {
     beer:  '<path d="M5 3h11l-1 13a4 4 0 01-4 4H9a4 4 0 01-4-4L5 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 7h13v3a4 4 0 01-3 3.87" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
@@ -40,7 +40,6 @@ const props = defineProps({
 });
 
 const selectedIndex = ref(0);
-const diabolo = useDiaboloMode();
 
 const menuItems = computed(() => {
     const items = props.chugTypes.map(ct => ({
@@ -73,35 +72,12 @@ function activateItem(i) {
     if (item?.action) item.action();
 }
 
-function onKeyDown(e) {
-    diabolo.feedKey(e.code);
-
-    const total = menuItems.value.length;
-    let idx = selectedIndex.value;
-
-    if (e.code === 'ArrowDown') {
-        e.preventDefault();
-        idx = (idx + 1) % total;
-    } else if (e.code === 'ArrowUp') {
-        e.preventDefault();
-        idx = (idx - 1 + total) % total;
-    } else if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        activateItem(idx);
-        return;
-    } else if (e.code === 'Escape') {
-        e.preventDefault();
-        window.location.href = '/';
-        return;
-    } else {
-        return;
-    }
-
-    selectedIndex.value = idx;
-}
-
-onMounted(() => document.addEventListener('keydown', onKeyDown));
-onUnmounted(() => document.removeEventListener('keydown', onKeyDown));
+useKeyController({
+    onEscape: () => { window.location.href = '/'; },
+    onDown: () => { selectedIndex.value = (selectedIndex.value + 1) % menuItems.value.length; },
+    onUp: () => { selectedIndex.value = (selectedIndex.value - 1 + menuItems.value.length) % menuItems.value.length; },
+    onActivate: () => { activateItem(selectedIndex.value); },
+});
 </script>
 
 <style scoped>

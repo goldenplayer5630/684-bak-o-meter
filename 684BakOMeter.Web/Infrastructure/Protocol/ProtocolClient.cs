@@ -15,6 +15,7 @@ public class ProtocolClient : IDisposable
     private readonly ITransport _transport;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly NfcScanBridge _scanBridge;
+    private readonly ChugService _chugService;
     private readonly ILogger<ProtocolClient> _logger;
 
     // Unbounded channel bridges the transport event into an async processing loop
@@ -26,11 +27,13 @@ public class ProtocolClient : IDisposable
         ITransport transport,
         IServiceScopeFactory scopeFactory,
         NfcScanBridge scanBridge,
+        ChugService chugService,
         ILogger<ProtocolClient> logger)
     {
         _transport = transport;
         _scopeFactory = scopeFactory;
         _scanBridge = scanBridge;
+        _chugService = chugService;
         _logger = logger;
     }
 
@@ -161,9 +164,7 @@ public class ProtocolClient : IDisposable
 
         _logger.LogDebug("Scale {ScaleNumber} measurement: {Value}", scaleNumber, value);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var chugService = scope.ServiceProvider.GetRequiredService<ChugService>();
-        await chugService.HandleMeasurementAsync(scaleNumber, value, ct);
+        await _chugService.HandleMeasurementAsync(scaleNumber, value, ct);
     }
 
     public void Dispose()
