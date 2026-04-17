@@ -1,0 +1,29 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore test project
+        run: dotnet restore 684BakOMeter.Tests/684BakOMeter.Tests.csproj
+
+      - name: Build test project
+        run: dotnet build 684BakOMeter.Tests/684BakOMeter.Tests.csproj --configuration Release --no-restore
+
+      - name: Run xUnit tests
+        run: dotnet test 684BakOMeter.Tests/684BakOMeter.Tests.csproj --configuration Release --no-build --verbosity normal

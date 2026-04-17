@@ -29,7 +29,7 @@ public class ChugSession
         ? (int)(EndTime.Value - StartTime.Value).TotalMilliseconds
         : null;
 
-    /// <summary>Live elapsed time in ms (ticks while Running).</summary>
+    /// <summary>Live elapsed time in ms (ticks while Running, frozen during Validating/Completed).</summary>
     public int ElapsedMs => State == ChugSessionState.Running && StartTime.HasValue
         ? (int)(DateTime.UtcNow - StartTime.Value).TotalMilliseconds
         : DurationMs ?? 0;
@@ -53,11 +53,10 @@ public class ChugSession
         State = ChugSessionState.Running;
     }
 
-    /// <summary>Marks the session as Completed and records the end time.</summary>
-    public void MarkCompleted()
+    /// <summary>Freezes the end time for duration calculation without changing state.</summary>
+    public void FreezeEndTime()
     {
         EndTime = DateTime.UtcNow;
-        State = ChugSessionState.Completed;
     }
 
     /// <summary>Marks the session as Invalid (full glass placed back without drinking).</summary>

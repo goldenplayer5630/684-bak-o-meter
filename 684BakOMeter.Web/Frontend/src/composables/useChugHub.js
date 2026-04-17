@@ -65,6 +65,11 @@ export function useChugHub() {
         connection.on('ChugUpdate', (data) => {
             const s = getScaleRef(data.scaleNumber);
             s.value = data;
+
+            // Freeze the local timer as soon as the glass is placed back (validating)
+            if (data.state === 'Validating' && data.durationMs != null) {
+                stopLocalTimer(data.scaleNumber, data.durationMs);
+            }
         });
 
         connection.on('ChugStarted', (data) => {
