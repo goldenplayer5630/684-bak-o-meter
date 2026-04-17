@@ -154,6 +154,9 @@ import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import { useKeyController } from '../composables/useKeyController.js';
 import { useChugHub } from '../composables/useChugHub.js';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/battle.mp3');
 
 const props = defineProps({
     chugTypeSlug: { type: String, default: 'Bak' },

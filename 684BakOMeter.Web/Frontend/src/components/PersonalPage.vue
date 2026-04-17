@@ -39,14 +39,23 @@
                     {{ currentLabel }}
                 </div>
 
-                <!-- Summary line -->
-                <div v-if="currentStat" class="ps-summary">
-                    <span class="ps-stat-rank" :class="rankClass(currentStat.rank)">
-                        #{{ currentStat.rank }}
-                    </span>
-                    <span class="ps-stat-of">/ {{ currentStat.totalPlayers }}</span>
-                    <span class="ps-stat-time">{{ currentStat.best }}</span>
-                    <span class="ps-stat-count">{{ currentStat.attemptCount }} pogingen</span>
+                <!-- Stats rows (leaderboard style) -->
+                <div v-if="currentStat" class="leaderboard-scroll">
+                    <div class="leaderboard-row" :class="rowClass(currentStat.rank)">
+                        <span class="leaderboard-rank" :class="rankClass(currentStat.rank)">#</span>
+                        <span class="leaderboard-name">POSITIE</span>
+                        <span class="leaderboard-time ps-dim"> >#{{ currentStat.rank }} / {{ currentStat.totalPlayers }}</span>
+                    </div>
+                    <div class="leaderboard-row">
+                        <span class="leaderboard-rank">⏱</span>
+                        <span class="leaderboard-name">BESTE TIJD</span>
+                        <span class="leaderboard-time">{{ currentStat.best }}</span>
+                    </div>
+                    <div class="leaderboard-row">
+                        <span class="leaderboard-rank">🎯</span>
+                        <span class="leaderboard-name">POGINGEN</span>
+                        <span class="leaderboard-time">{{ currentStat.attemptCount }}</span>
+                    </div>
                 </div>
                 <div v-else class="leaderboard-empty">
                     Nog geen scores voor {{ currentLabel }}
@@ -90,6 +99,9 @@ import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import ManageNfcTags from './ManageNfcTags.vue';
 import { useKeyController } from '../composables/useKeyController.js';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/trekeenbak.mp3');
 
 // --- Phase control ---
 const phase = ref('scan');
@@ -295,9 +307,16 @@ function drawGraph() {
 watch(graphData, () => { nextTick(() => drawGraph()); });
 
 function rankClass(rank) {
-    if (rank === 1) return 'ps-rank--gold';
-    if (rank === 2) return 'ps-rank--silver';
-    if (rank === 3) return 'ps-rank--bronze';
+    if (rank === 1) return 'leaderboard-rank--gold';
+    if (rank === 2) return 'leaderboard-rank--silver';
+    if (rank === 3) return 'leaderboard-rank--bronze';
+    return '';
+}
+
+function rowClass(rank) {
+    if (rank === 1) return 'leaderboard-row--gold';
+    if (rank === 2) return 'leaderboard-row--silver';
+    if (rank === 3) return 'leaderboard-row--bronze';
     return '';
 }
 
@@ -327,36 +346,9 @@ useKeyController({
     text-align: center;
 }
 
-.ps-summary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0;
-    font-family: var(--font-arcade);
-}
-
-.ps-stat-rank {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-.ps-rank--gold   { color: #ffd700; text-shadow: var(--glow-yellow); }
-.ps-rank--silver { color: #c0c0c0; }
-.ps-rank--bronze { color: #cd7f32; }
-
-.ps-stat-of {
+.ps-dim {
+    color: var(--text-muted) !important;
     font-size: 0.5rem;
-    color: var(--text-muted);
-}
-
-.ps-stat-time {
-    font-size: 0.65rem;
-    color: var(--accent-green);
-}
-
-.ps-stat-count {
-    font-size: 0.4rem;
-    color: var(--text-muted);
 }
 
 .ps-graph-container {

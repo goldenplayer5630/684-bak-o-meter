@@ -44,8 +44,8 @@ public class NfcService
     /// </summary>
     public async Task<(NfcTag? Tag, Player? Player, bool IsKnown)> ResolveTagAsync(string uid)
     {
-        var normalized = uid.Trim().ToUpperInvariant();
-        var tag = await _nfcTags.GetByUidAsync(normalized);
+        var hashed = NfcUidHasher.Hash(uid);
+        var tag = await _nfcTags.GetByUidAsync(hashed);
 
         if (tag is null)
             return (null, null, false);
@@ -64,7 +64,7 @@ public class NfcService
         string rawName, string tagUid)
     {
         var normalizedName = rawName.Trim().ToLower();
-        var normalizedUid = tagUid.Trim().ToUpperInvariant();
+        var hashedUid = NfcUidHasher.Hash(tagUid);
 
         if (string.IsNullOrEmpty(normalizedName))
             return (null!, null!, "Naam mag niet leeg zijn.");
@@ -75,7 +75,7 @@ public class NfcService
             return (null!, null!, "Deze naam is al in gebruik.");
 
         // Check tag is not already linked
-        var existingTag = await _nfcTags.GetByUidAsync(normalizedUid);
+        var existingTag = await _nfcTags.GetByUidAsync(hashedUid);
         if (existingTag is not null)
             return (null!, null!, "Deze NFC tag is al gekoppeld aan een andere speler.");
 
@@ -85,7 +85,7 @@ public class NfcService
         var tag = new NfcTag
         {
             PlayerId = player.Id,
-            Uid = normalizedUid,
+            Uid = hashedUid,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
         };
@@ -100,9 +100,9 @@ public class NfcService
     /// </summary>
     public async Task<(NfcTag? Tag, string? Error)> LinkTagToPlayerAsync(int playerId, string tagUid)
     {
-        var normalizedUid = tagUid.Trim().ToUpperInvariant();
+        var hashedUid = NfcUidHasher.Hash(tagUid);
 
-        var existingTag = await _nfcTags.GetByUidAsync(normalizedUid);
+        var existingTag = await _nfcTags.GetByUidAsync(hashedUid);
         if (existingTag is not null)
         {
             if (existingTag.PlayerId == playerId)
@@ -117,7 +117,7 @@ public class NfcService
         var tag = new NfcTag
         {
             PlayerId = playerId,
-            Uid = normalizedUid,
+            Uid = hashedUid,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
         };

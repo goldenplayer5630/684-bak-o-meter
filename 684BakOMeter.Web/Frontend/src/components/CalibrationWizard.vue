@@ -66,6 +66,9 @@
 import { ref, onUnmounted } from 'vue';
 import * as signalR from '@microsoft/signalr';
 import { useKeyController } from '../composables/useKeyController.js';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/trekeenbak.mp3');
 
 const steps = [
     { key: 'nothing',    title: 'NIETS',       instruction: 'Zorg dat er NIETS op de weegschaal staat.' },

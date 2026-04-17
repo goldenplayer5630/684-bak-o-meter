@@ -58,6 +58,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/trekeenbak.mp3');
 import { useIdleTimeout } from '../composables/useIdleTimeout.js';
 import { useKeyController } from '../composables/useKeyController.js';
 

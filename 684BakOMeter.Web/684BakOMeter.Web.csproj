@@ -23,8 +23,4 @@
     <PackageReference Include="RJCP.SerialPortStream" Version="3.0.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\music\" />
-  </ItemGroup>
-
 </Project>

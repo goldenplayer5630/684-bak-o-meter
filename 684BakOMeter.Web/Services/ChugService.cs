@@ -103,6 +103,11 @@ public class ChugService
                 _logger.LogInformation("Session {Id}: Full glass detected (avg={Avg:F0})", session.SessionId, avg);
                 break;
 
+            // Glass still sitting on the scale — keep tracking the stable weight
+            case ChugSessionState.Ready when avg >= _config.EmptyThreshold:
+                session.LiftWeight = avg;
+                break;
+
             // Glass lifted off the scale → start timer
             case ChugSessionState.Ready when avg < _config.EmptyThreshold:
                 session.MarkStarted();

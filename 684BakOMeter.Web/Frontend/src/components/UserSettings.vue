@@ -25,6 +25,9 @@
 import { onMounted, onUnmounted } from 'vue';
 import VolumeSettings from './VolumeSettings.vue';
 import { useDifferentBgMode } from '../composables/useDifferentBgMode.js';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/trekeenbak.mp3');
 
 function goBack() {
     window.location.href = '/';

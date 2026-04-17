@@ -71,6 +71,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useKeyController } from '../composables/useKeyController.js';
+import { useBgMusic } from '../composables/useBgMusic.js';
+
+useBgMusic('/music/trekeenbak.mp3');
 
 const PER_PAGE = 8;
 
