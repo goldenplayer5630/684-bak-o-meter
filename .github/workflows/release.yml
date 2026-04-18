@@ -10,8 +10,8 @@ permissions:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  TEST_PROJECT: '684BakOMeter.Tests/684BakOMeter.Tests.csproj'
-  APP_PROJECT: '684BakOMeter/684BakOMeter.csproj'
+  TEST_PROJECT: './684BakOMeter.Tests/684BakOMeter.Tests.csproj'
+  APP_PROJECT: './684BakOMeter.Web/684BakOMeter.Web.csproj'
   APP_NAME: '684BakOMeter'
   RUNTIME: 'linux-x64'
   PUBLISH_DIR: './publish'
