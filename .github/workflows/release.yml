@@ -87,8 +87,6 @@ jobs:
             --project "${{ env.APP_PROJECT }}" \
             --startup-project "${{ env.APP_PROJECT }}" \
             --configuration Release \
-            --runtime "${{ env.RUNTIME }}" \
-            --self-contained false \
             --output "${{ env.PUBLISH_DIR }}/efbundle" \
             --force
         env:
