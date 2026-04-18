@@ -111,6 +111,7 @@ jobs:
           cp deploy/scripts/postinstall.sh staging/scripts/
           cp deploy/scripts/preremove.sh staging/scripts/
           cp deploy/scripts/postremove.sh staging/scripts/
+          cp deploy/scripts/setup.sh staging/scripts/
           cp deploy/nfpm.yaml staging/nfpm.yaml
 
       - name: Install nFPM

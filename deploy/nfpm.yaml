@@ -12,7 +12,6 @@ homepage: "https://github.com/goldenplayer5630/684-bak-o-meter"
 license: "MIT"
 
 depends:
-  - postgresql
   - curl
   - jq
 
@@ -29,6 +28,12 @@ contents:
   # --- updater script ---
   - src: linux/684bakometer-update.sh
     dst: /opt/684bakometer/684bakometer-update.sh
+    file_info:
+      mode: 0755
+
+  # --- setup script (runs after dpkg, installs .NET + PostgreSQL) ---
+  - src: scripts/setup.sh
+    dst: /opt/684bakometer/684bakometer-setup.sh
     file_info:
       mode: 0755
 
