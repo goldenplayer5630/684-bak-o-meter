@@ -104,7 +104,6 @@ jobs:
 
       - name: Prepare Debian package staging
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p staging/package staging/systemd staging/linux staging/scripts
           cp -a "${{ env.PUBLISH_DIR }}/." staging/package/
           cp deploy/systemd/684bakometer.service staging/systemd/
@@ -112,20 +111,36 @@ jobs:
           cp deploy/scripts/postinstall.sh staging/scripts/
           cp deploy/scripts/preremove.sh staging/scripts/
           cp deploy/scripts/postremove.sh staging/scripts/
+          cp deploy/nfpm.yaml staging/nfpm.yaml
 
       - name: Install nFPM
         run: |
-          curl -fsSL https://github.com/goreleaser/nfpm/releases/download/v2.46.3/nfpm_2.46.3_Linux_x86_64.tar.gz \
-            | tar -xz -C /usr/local/bin nfpm
+          curl -fsSL -o /tmp/nfpm.deb \
+            https://github.com/goreleaser/nfpm/releases/download/v2.46.3/nfpm_2.46.3_amd64.deb
+          sudo dpkg -i /tmp/nfpm.deb
+          rm -f /tmp/nfpm.deb
 
       - name: Build Debian package
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cd staging
-          VERSION="${VERSION}" nfpm package \
-            --config ../deploy/nfpm.yaml \
+          export VERSION
+          nfpm package \
+            --config nfpm.yaml \
             --packager deb \
             --target "../${{ env.DIST_DIR }}/684bakometer_${VERSION}_amd64.deb"
+
+      - name: Validate Debian package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DEB_FILE="${{ env.DIST_DIR }}/684bakometer_${VERSION}_amd64.deb"
+          echo ">>> Checking file type..."
+          file "${DEB_FILE}"
+          file "${DEB_FILE}" | grep -q "Debian binary package" || { echo "ERROR: not a valid .deb"; exit 1; }
+          echo ">>> Package info:"
+          dpkg-deb --info "${DEB_FILE}"
+          echo ">>> Package contents:"
+          dpkg-deb --contents "${DEB_FILE}" | head -40
 
       - name: Create release if missing
         env:
