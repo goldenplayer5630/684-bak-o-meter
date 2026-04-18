@@ -5,7 +5,7 @@ Wants=network-online.target
 Requires=postgresql.service
 
 [Service]
-Type=notify
+Type=exec
 User=arcade
 Group=arcade
 WorkingDirectory=/opt/684bakometer/current

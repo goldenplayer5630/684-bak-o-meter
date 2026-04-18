@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   TEST_PROJECT: './684BakOMeter.Tests/684BakOMeter.Tests.csproj'
   APP_PROJECT: './684BakOMeter.Web/684BakOMeter.Web.csproj'
   APP_NAME: '684BakOMeter'
@@ -54,18 +54,45 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: 684BakOMeter.Web/Frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: 684BakOMeter.Web/Frontend
+        run: npm run build
+
       - name: Restore app project
         run: dotnet restore "${{ env.APP_PROJECT }}"
 
-      - name: Publish app for Linux
+      - name: Publish app for Linux (framework-dependent)
         run: |
           dotnet publish "${{ env.APP_PROJECT }}" \
             --configuration Release \
             --runtime "${{ env.RUNTIME }}" \
-            --self-contained true \
-            /p:PublishSingleFile=true \
-            /p:IncludeNativeLibrariesForSelfExtract=true \
+            --self-contained false \
             --output "${{ env.PUBLISH_DIR }}"
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Build EF Core migration bundle
+        run: |
+          dotnet ef migrations bundle \
+            --project "${{ env.APP_PROJECT }}" \
+            --startup-project "${{ env.APP_PROJECT }}" \
+            --configuration Release \
+            --runtime "${{ env.RUNTIME }}" \
+            --self-contained false \
+            --output "${{ env.PUBLISH_DIR }}/efbundle" \
+            --force
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=dummy"
 
       - name: Add VERSION file
         run: |
@@ -76,6 +103,31 @@ jobs:
           mkdir -p "${{ env.DIST_DIR }}"
           tar -czf "${{ env.DIST_DIR }}/${{ env.ARCHIVE_NAME }}" -C "${{ env.PUBLISH_DIR }}" .
           sha256sum "${{ env.DIST_DIR }}/${{ env.ARCHIVE_NAME }}" > "${{ env.DIST_DIR }}/${{ env.CHECKSUM_NAME }}"
+
+      - name: Prepare Debian package staging
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p staging/package staging/systemd staging/linux staging/scripts
+          cp -a "${{ env.PUBLISH_DIR }}/." staging/package/
+          cp deploy/systemd/684bakometer.service staging/systemd/
+          cp deploy/linux/684bakometer-update.sh staging/linux/
+          cp deploy/scripts/postinstall.sh staging/scripts/
+          cp deploy/scripts/preremove.sh staging/scripts/
+          cp deploy/scripts/postremove.sh staging/scripts/
+
+      - name: Install nFPM
+        run: |
+          curl -fsSL https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_linux_amd64.tar.gz \
+            | tar -xz -C /usr/local/bin nfpm
+
+      - name: Build Debian package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd staging
+          VERSION="${VERSION}" nfpm package \
+            --config ../deploy/nfpm.yaml \
+            --packager deb \
+            --target "../${{ env.DIST_DIR }}/684bakometer_${VERSION}_amd64.deb"
 
       - name: Create release if missing
         env:
@@ -93,4 +145,5 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" \
             "${{ env.DIST_DIR }}/${{ env.ARCHIVE_NAME }}" \
             "${{ env.DIST_DIR }}/${{ env.CHECKSUM_NAME }}" \
+            ${{ env.DIST_DIR }}/684bakometer_*_amd64.deb \
             --clobber

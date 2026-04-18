@@ -121,12 +121,19 @@ public class ChugService
                 }, ct);
                 break;
 
-            // Glass placed back — enter validating state (2-second settle period)
+            // Glass placed back — stop timer immediately, then enter validating state
             case ChugSessionState.Running when avg >= _config.EmptyThreshold:
             {
+                session.FreezeEndTime(); // freeze the timer now
                 session.State = ChugSessionState.Validating;
-                session.FreezeEndTime(); // freeze the timer now, state stays Validating
-                _logger.LogInformation("Session {Id}: Glass placed back — validating... (avg={Avg:F0})", session.SessionId, avg);
+                _logger.LogInformation("Session {Id}: Glass placed back — stopping timer, validating... (avg={Avg:F0})", session.SessionId, avg);
+                await _hubContext.Clients.All.SendAsync("ChugTimerStop", new
+                {
+                    sessionId = session.SessionId,
+                    scaleNumber = session.ScaleNumber,
+                    playerId = session.PlayerId,
+                    durationMs = session.DurationMs,
+                }, ct);
                 _ = ValidateAfterDelayAsync(session, ct);
                 break;
             }

@@ -76,6 +76,10 @@ export function useChugHub() {
             startLocalTimer(data.scaleNumber);
         });
 
+        connection.on('ChugTimerStop', (data) => {
+            stopLocalTimer(data.scaleNumber, data.durationMs);
+        });
+
         connection.on('ChugCompleted', (data) => {
             stopLocalTimer(data.scaleNumber, data.durationMs);
             if (onCompleteFn) onCompleteFn(data);
