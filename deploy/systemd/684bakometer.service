@@ -1,0 +1,29 @@
+[Unit]
+Description=684 Bak-O-Meter Arcade Application
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=arcade
+Group=arcade
+WorkingDirectory=/opt/684bakometer/current
+ExecStartPre=/opt/684bakometer/684bakometer-update.sh
+ExecStart=/opt/684bakometer/current/684BakOMeter.Web
+EnvironmentFile=/etc/684bakometer/app.env
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+KillSignal=SIGINT
+SyslogIdentifier=684bakometer
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/684bakometer
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+name: 684bakometer
+arch: amd64
+platform: linux
+version: "${VERSION}"
+maintainer: "684 Bak-O-Meter Team <noreply@github.com>"
+description: |
+  684 Bak-O-Meter arcade application.
+  ASP.NET Core web app with PostgreSQL backend,
+  serial device integration, and live leaderboards.
+vendor: "goldenplayer5630"
+homepage: "https://github.com/goldenplayer5630/684-bak-o-meter"
+license: "MIT"
+
+depends:
+  - postgresql
+  - curl
+  - jq
+
+contents:
+  # --- application package (initial seed from build) ---
+  - src: package/
+    dst: /opt/684bakometer/package/
+    type: tree
+
+  # --- systemd service ---
+  - src: systemd/684bakometer.service
+    dst: /usr/lib/systemd/system/684bakometer.service
+
+  # --- updater script ---
+  - src: linux/684bakometer-update.sh
+    dst: /opt/684bakometer/684bakometer-update.sh
+    file_info:
+      mode: 0755
+
+  # --- empty dirs ---
+  - dst: /opt/684bakometer/releases
+    type: dir
+  - dst: /opt/684bakometer/downloads
+    type: dir
+  - dst: /etc/684bakometer
+    type: dir
+    file_info:
+      mode: 0750
+
+scripts:
+  postinstall: scripts/postinstall.sh
+  preremove: scripts/preremove.sh
+  postremove: scripts/postremove.sh
