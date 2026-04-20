@@ -132,6 +132,7 @@ public class ChugService
             // Glass placed back — enter validating state (5-second settle period)
             case ChugSessionState.Running when avg >= _config.EmptyThreshold:
             {
+                session.FreezeEndTime(); // freeze the timer now
                 session.State = ChugSessionState.Validating;
                 session.FreezeEndTime(); // freeze the timer now, state stays Validating
                 _logger.LogInformation(
