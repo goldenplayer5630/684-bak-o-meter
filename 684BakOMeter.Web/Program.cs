@@ -20,6 +20,7 @@ builder.Services.AddScoped<INfcTagRepository, NfcTagRepository>();
 // --- Services ---
 builder.Services.AddScoped<PlayerService>();
 builder.Services.AddScoped<NfcService>();
+builder.Services.AddScoped<ScoreManagementService>();
 builder.Services.AddSingleton<CalibrationService>();
 builder.Services.AddSingleton<ChugService>();
 builder.Services.AddSingleton<NfcScanBridge>();

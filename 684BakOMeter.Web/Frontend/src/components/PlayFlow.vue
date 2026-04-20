@@ -112,8 +112,15 @@
                 <template v-if="!isMultiplayer">
                     <div class="result-title">RESULTAAT</div>
                     <div class="result-player">{{ playerName1 }}</div>
-                    <div v-if="isNewBest1" class="result-new-best arcade-blink">★ NIEUW RECORD!</div>
-                    <div v-else class="result-not-best">NIET VERBETERD</div>
+                    <template v-if="isOverallBest1">
+                        <div class="result-new-best result-overall-best arcade-blink">🏆 OVERALL RECORD!</div>
+                    </template>
+                    <template v-else-if="isNewBest1">
+                        <div class="result-new-best arcade-blink">★ NIEUW PERSOONLIJK RECORD!</div>
+                    </template>
+                    <template v-else>
+                        <div class="result-not-best">NIET VERBETERD</div>
+                    </template>
                     <div v-if="rank1" class="result-rank">#{{ rank1 }}</div>
                     <div class="result-time">{{ formatTime(elapsed1) }}</div>
                 </template>
@@ -122,13 +129,20 @@
                 <template v-if="isMultiplayer">
                     <div class="result-title">WINNAAR</div>
                     <div class="result-winner">{{ winnerName }}</div>
-                    <div v-if="winnerNewBest" class="result-new-best arcade-blink">★ NIEUW RECORD!</div>
+                    <template v-if="winnerOverallBest">
+                        <div class="result-new-best result-overall-best arcade-blink">🏆 OVERALL RECORD!</div>
+                    </template>
+                    <template v-else-if="winnerNewBest">
+                        <div class="result-new-best arcade-blink">★ NIEUW PERSOONLIJK RECORD!</div>
+                    </template>
                     <div v-if="winnerRank" class="result-rank">#{{ winnerRank }}</div>
                     <div class="result-time">{{ formatTime(winnerTime) }}</div>
                     <div class="result-vs">VS</div>
                     <div class="result-loser">
                         {{ loserName }}
-                        <span v-if="!loserNewBest" class="result-not-best-inline"> — niet verbeterd</span>
+                        <span v-if="loserOverallBest"> — 🏆 overall record</span>
+                        <span v-else-if="loserNewBest"> — ★ persoonlijk record</span>
+                        <span v-else class="result-not-best-inline"> — niet verbeterd</span>
                         <span v-if="loserRank"> — #{{ loserRank }}</span>
                         — {{ formatTime(loserTime) }}
                     </div>
@@ -228,6 +242,13 @@ const winnerRank    = computed(() => elapsed1.value <= elapsed2.value ? rank1.va
 const loserRank     = computed(() => elapsed1.value <= elapsed2.value ? rank2.value : rank1.value);
 const winnerNewBest = computed(() => elapsed1.value <= elapsed2.value ? isNewBest1.value : isNewBest2.value);
 const loserNewBest  = computed(() => elapsed1.value <= elapsed2.value ? isNewBest2.value : isNewBest1.value);
+
+// Overall-record: personal best AND first place on the leaderboard
+const isOverallBest1  = computed(() => isNewBest1.value && rank1.value === 1);
+const isOverallBest2  = computed(() => isNewBest2.value && rank2.value === 1);
+const winnerOverallBest = computed(() => elapsed1.value <= elapsed2.value ? isOverallBest1.value : isOverallBest2.value);
+const loserOverallBest  = computed(() => elapsed1.value <= elapsed2.value ? isOverallBest2.value : isOverallBest1.value);
+const overallBestTime = ref(null);
 
 function formatTime(ms) {
     const sec  = Math.floor(ms / 1000);
@@ -389,7 +410,26 @@ async function saveAndShowResult() {
         }
     } catch (err) { console.error('Save failed:', err); }
 
-    spawnConfetti();
+    // Determine overall bests for result screen
+    try {
+        const res = await fetch('/api/play/get-overall-bests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chugType: props.chugTypeSlug }),
+        });
+        const data = await res.json();
+        if (data.playerId === player1Id) {
+            isOverallBest1.value = true;
+            overallBestTime.value = data.bestTime;
+        } else if (data.playerId === player2Id) {
+            isOverallBest2.value = true;
+            overallBestTime.value = data.bestTime;
+        }
+    } catch (err) {
+        console.error('Fetch overall bests failed:', err);
+    }
+
+    spawnConfetti(isOverallBest1.value || isOverallBest2.value);
     step.value = 'result';
     resultCountdown.value = 5;
     resultInterval = setInterval(() => {
@@ -398,15 +438,16 @@ async function saveAndShowResult() {
     }, 1000);
 }
 
-function spawnConfetti() {
+function spawnConfetti(overall = false) {
     const colors = ['#ffd700', '#00e676', '#00e5ff', '#ff4081', '#ff9100', '#b388ff'];
-    for (let i = 0; i < 60; i++) {
+    const count  = overall ? 160 : 60;
+    for (let i = 0; i < count; i++) {
         const el = document.createElement('div');
         el.className = 'confetti';
         el.style.left = Math.random() * 100 + 'vw';
         el.style.background = colors[Math.floor(Math.random() * colors.length)];
-        el.style.width = (6 + Math.random() * 8) + 'px';
-        el.style.height = (6 + Math.random() * 8) + 'px';
+        el.style.width = (6 + Math.random() * (overall ? 14 : 8)) + 'px';
+        el.style.height = (6 + Math.random() * (overall ? 14 : 8)) + 'px';
         el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
         el.style.animationDuration = (2 + Math.random() * 3) + 's';
         el.style.animationDelay = (Math.random() * 2) + 's';

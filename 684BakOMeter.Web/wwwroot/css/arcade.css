@@ -376,6 +376,7 @@ body.kompas-mode.arcade-body::before {
     border-radius: 5px;
     margin-bottom: 0.2rem;
     background: transparent;
+    border: 1px solid transparent;
 }
 
 .leaderboard-row--gold   { background: rgba(255,215,0,.08); }
@@ -540,6 +541,12 @@ body.kompas-mode.arcade-body::before {
     color: var(--accent-green);
     text-shadow: var(--glow-green);
     letter-spacing: 1px;
+}
+
+.result-overall-best {
+    font-size: 0.85rem;
+    color: var(--accent-yellow);
+    text-shadow: var(--glow-yellow);
 }
 
 .result-not-best {

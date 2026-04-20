@@ -22,7 +22,7 @@ import { useDifferentBgMode } from './useDifferentBgMode.js';
  *                                               default named-action dispatch.
  * @param {Function} [options.feedSecrets]     — optional extra secret-code
  *                                               handler (e.g. ArcadeMenu 684).
- *                                               Receives `e.code`.
+ *                                               Receives `e.code` and `e`.
  *
  * All named action callbacks receive the raw KeyboardEvent so the
  * component can inspect modifiers, do conditional logic, etc.
@@ -54,7 +54,7 @@ export function useKeyController(options = {}) {
     function handleKeyDown(e) {
         // Feed easter-egg trackers
         bgMode.feedKey(e.code);
-        options.feedSecrets?.(e.code);
+        options.feedSecrets?.(e.code, e);
 
         // Let the component intercept any key before named dispatch
         if (options.onKey?.(e) === true) return;

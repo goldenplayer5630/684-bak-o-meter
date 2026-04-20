@@ -85,6 +85,11 @@ const SECRET_CONFIG = ['KeyC', 'KeyO', 'KeyN', 'KeyF', 'KeyI', 'KeyG'];
 const secretBufferConfig = [];
 let configTimeout = null;
 
+const MANAGER_KEYWORD = 'mgr';
+let managerBuffer = '';
+let managerTimeout = null;
+const managerWindowOpen = ref(false);
+
 // --- State ---
 const phase = ref('attract');
 const currentTypeIndex = ref(0);
@@ -196,7 +201,27 @@ function getCols() { return 1; }
 // --- Idle timeout (60s) ---
 const idleTimeout = useIdleTimeout(60000, () => { startAttract(); });
 
-function checkSecrets(code) {
+function checkSecrets(code, e) {
+    // manager -> hidden manager page (only first 10s after page load)
+    if (managerWindowOpen.value) {
+        const key = (e?.key ?? '').toLowerCase();
+        if (/^[a-z]$/.test(key)) {
+            const candidate = managerBuffer + key;
+            if (MANAGER_KEYWORD.startsWith(candidate)) {
+                managerBuffer = candidate;
+            } else {
+                managerBuffer = key === MANAGER_KEYWORD[0] ? key : '';
+            }
+
+            if (managerBuffer === MANAGER_KEYWORD) {
+                window.location.href = '/manager';
+                return;
+            }
+        } else if (code.startsWith('Arrow') || code === 'Enter' || code === 'Space' || code === 'Escape') {
+            managerBuffer = '';
+        }
+    }
+
     // 684 → hidden menu
     secretBuffer684.push(code);
     if (secretBuffer684.length > SECRET_SEQ684.length) secretBuffer684.shift();
@@ -216,9 +241,19 @@ function checkSecrets(code) {
     configTimeout = setTimeout(() => { secretBufferConfig.length = 0; }, 10000);
 }
 
+function startManagerWindow() {
+    managerBuffer = '';
+    managerWindowOpen.value = true;
+    if (managerTimeout) clearTimeout(managerTimeout);
+    managerTimeout = setTimeout(() => {
+        managerWindowOpen.value = false;
+        managerBuffer = '';
+    }, 10000);
+}
+
 // --- Keyboard ---
 useKeyController({
-    feedSecrets: (code) => checkSecrets(code),
+    feedSecrets: (code, e) => checkSecrets(code, e),
     onActivate: () => {
         if (phase.value === 'attract') { showMenu(); return; }
         if (phase.value === 'menu') { activateItem(selectedIndex.value); idleTimeout.reset(); }
@@ -248,8 +283,13 @@ useKeyController({
     },
 });
 
-onMounted(() => { startAttract(); });
-onUnmounted(() => { stopAttract(); idleTimeout.stop(); });
+onMounted(() => { startAttract(); startManagerWindow(); });
+onUnmounted(() => {
+    stopAttract();
+    idleTimeout.stop();
+    if (managerTimeout) clearTimeout(managerTimeout);
+    if (configTimeout) clearTimeout(configTimeout);
+});
 </script>
 
 <style scoped>
