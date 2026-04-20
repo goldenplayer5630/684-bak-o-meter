@@ -31,8 +31,13 @@ public class ChugAttempt
     /// <summary>Optional free-text notes (e.g. "cold lager", "personal best").</summary>
     public string? Notes { get; set; }
 
-    /// <summary>HIgh score</summary>
-    public bool IsHighScore { get; set; }   
+    /// <summary>
+    /// True when this attempt is the player's personal best for this chug type.
+    /// Not persisted — calculated by <see cref="Data.Repositories.ChugAttemptRepository"/>
+    /// at query time: the attempt with the lowest <see cref="DurationMs"/>
+    /// (ties broken by lowest <see cref="Id"/>) per player + chug type.
+    /// </summary>
+    public bool IsHighScore { get; set; }
 
     // --- 1v1 back-references (null when this is a solo attempt) ---
 

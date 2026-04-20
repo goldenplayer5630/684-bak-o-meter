@@ -11,8 +11,25 @@
 
         <!-- Normal list mode -->
         <template v-else>
+            <div v-if="loading" class="nfc-loading mt-1">Laden...</div>
+            <div v-else-if="error" class="nfc-error mt-1">{{ error }}</div>
+            <div v-else-if="tags.length === 0" class="nfc-empty mt-1">Geen tags gevonden.</div>
+            <div v-else class="nfc-tag-list mt-1">
+                <div v-for="tag in tags" :key="tag.id" class="nfc-tag-row">
+                    <span class="nfc-tag-uid">{{ tag.uid }}</span>
+                    <span v-if="tag.label" class="nfc-tag-label">{{ tag.label }}</span>
+                    <button class="nfc-tag-remove"
+                            :disabled="tags.length <= 1 || removing"
+                            :title="tags.length <= 1 ? 'Laatste tag kan niet worden verwijderd' : 'Verwijderen'"
+                            @click="removeTag(tag.id)">
+                        ✕
+                    </button>
+                </div>
+            </div>
             <div class="arcade-menu arcade-menu--narrow mt-2">
-                <button class="arcade-btn arcade-btn--primary"
+                <button ref="addBtnRef"
+                        class="arcade-btn arcade-btn--primary"
+                        :class="{ selected: keyboardSelected }"
                         @click="adding = true">
                     + TAG TOEVOEGEN
                 </button>
@@ -27,6 +44,7 @@ import AddNfcTag from './AddNfcTag.vue';
 
 const props = defineProps({
     playerId: { type: Number, required: true },
+    keyboardSelected: { type: Boolean, default: false },
 });
 
 const tags = ref([]);
@@ -34,6 +52,7 @@ const loading = ref(true);
 const error = ref('');
 const removing = ref(false);
 const adding = ref(false);
+const addBtnRef = ref(null);
 
 async function loadTags() {
     loading.value = true;
@@ -76,6 +95,15 @@ function onTagAdded() {
     adding.value = false;
     loadTags();
 }
+
+function activatePrimaryAction() {
+    if (adding.value || loading.value) return;
+    addBtnRef.value?.click();
+}
+
+defineExpose({
+    activatePrimaryAction,
+});
 
 onMounted(() => loadTags());
 </script>
@@ -125,9 +153,15 @@ onMounted(() => loadTags());
     border-radius: 4px;
     cursor: pointer;
 }
-.nfc-tag-remove:hover {
+.nfc-tag-remove:hover:not(:disabled) {
     background: var(--accent-red);
     color: var(--bg-dark);
+}
+.nfc-tag-remove:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    border-color: var(--text-muted);
+    color: var(--text-muted);
 }
 .nfc-error {
     color: var(--accent-red);

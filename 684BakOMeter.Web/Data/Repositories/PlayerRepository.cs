@@ -41,5 +41,5 @@ public class PlayerRepository : IPlayerRepository
     /// <inheritdoc />
     public async Task<Player?> GetByNameAsync(string normalizedName)
         => await _db.Players
-                    .FirstOrDefaultAsync(p => p.Name == normalizedName);
+                    .FirstOrDefaultAsync(p => p.Name.ToLower() == normalizedName.ToLower());
 }

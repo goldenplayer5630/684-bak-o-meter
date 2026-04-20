@@ -50,7 +50,7 @@ const submitting = ref(false);
 
 async function submit() {
     error.value = '';
-    const trimmed = name.value.trim().toLowerCase();
+    const trimmed = name.value.trim();
 
     if (!trimmed) {
         error.value = 'Voer een naam in.';

@@ -73,8 +73,10 @@
             </div>
 
             <!-- NFC tag management -->
-            <div class="ps-nfc-section mt-1">
-                <ManageNfcTags :playerId="playerId" />
+            <div class="ps-nfc-section mt-1" @mouseenter="focus = 'nfc'">
+                <ManageNfcTags ref="manageNfcRef"
+                               :playerId="playerId"
+                               :keyboardSelected="focus === 'nfc'" />
             </div>
 
             <!-- Back -->
@@ -87,14 +89,14 @@
 
             <!-- Key hint -->
             <div class="arcade-subtitle" style="font-size:.4rem;">
-                &#8592;&#8594; TYPE WISSELEN &bull; ESC TERUG
+                &#8592;&#8594; TYPE WISSELEN &bull; &#8593;&#8595; NAVIGEREN &bull; ENTER SELECTEREN &bull; ESC TERUG
             </div>
         </template>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import ManageNfcTags from './ManageNfcTags.vue';
@@ -119,6 +121,7 @@ const focus = ref('tab');
 const graphLoading = ref(false);
 const graphData = ref([]);
 const canvasRef = ref(null);
+const manageNfcRef = ref(null);
 
 const currentLabel = computed(() => chugTypes.value[tabIdx.value]?.label ?? '');
 const currentStat = computed(() => {
@@ -175,6 +178,7 @@ async function loadProfile(pid, pname) {
     }
 
     phase.value = 'profile';
+    focus.value = 'tab';
     tabIdx.value = 0;
     if (chugTypes.value.length > 0) {
         await nextTick();
@@ -187,6 +191,31 @@ function pickTab(i) {
     tabIdx.value = i;
     focus.value = 'tab';
     loadGraph(i);
+}
+
+function moveFocusDown() {
+    if (phase.value !== 'profile') return;
+    if (focus.value === 'tab') focus.value = 'nfc';
+    else if (focus.value === 'nfc') focus.value = 'back';
+}
+
+function moveFocusUp() {
+    if (phase.value !== 'profile') return;
+    if (focus.value === 'back') focus.value = 'nfc';
+    else if (focus.value === 'nfc') focus.value = 'tab';
+}
+
+function activateFocus() {
+    if (phase.value !== 'profile') return;
+
+    if (focus.value === 'back') {
+        goBack();
+        return;
+    }
+
+    if (focus.value === 'nfc') {
+        manageNfcRef.value?.activatePrimaryAction?.();
+    }
 }
 
 async function loadGraph(idx) {
@@ -333,6 +362,9 @@ useKeyController({
         const n = chugTypes.value.length;
         pickTab((tabIdx.value - 1 + n) % n);
     },
+    onDown: () => moveFocusDown(),
+    onUp: () => moveFocusUp(),
+    onActivate: () => activateFocus(),
 });
 </script>
 

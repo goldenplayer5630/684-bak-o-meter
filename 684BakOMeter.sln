@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.4.11626.88 stable
+VisualStudioVersion = 18.4.11626.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "684BakOMeter.Web", "684BakOMeter.Web\684BakOMeter.Web.csproj", "{878EF2AA-D755-4018-85A0-A8D7F138F5A1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "684BakOMeter.Tests", "684BakOMeter.Tests\684BakOMeter.Tests.csproj", "{6AEA1C75-4C00-42E5-B154-A99969DC0B6F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "684BakOMeter.Sim", "684BakOMeter.Sim\684BakOMeter.Sim.csproj", "{C6761C4D-AFB0-4108-927D-256B4D560EB4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{6AEA1C75-4C00-42E5-B154-A99969DC0B6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6AEA1C75-4C00-42E5-B154-A99969DC0B6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6AEA1C75-4C00-42E5-B154-A99969DC0B6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6761C4D-AFB0-4108-927D-256B4D560EB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6761C4D-AFB0-4108-927D-256B4D560EB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6761C4D-AFB0-4108-927D-256B4D560EB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6761C4D-AFB0-4108-927D-256B4D560EB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -23,7 +23,8 @@ public class PlayerService
     /// </summary>
     public async Task<Player> ResolvePlayerAsync(string rawName)
     {
-        var normalized = Normalize(rawName);
+        var displayName = rawName.Trim();
+        var normalized = Normalize(displayName);
 
         if (string.IsNullOrEmpty(normalized))
             throw new ArgumentException("Player name cannot be empty.", nameof(rawName));
@@ -32,12 +33,12 @@ public class PlayerService
         if (existing is not null)
             return existing;
 
-        var player = new Player { Name = normalized };
+        var player = new Player { Name = displayName };
         await _players.AddAsync(player);
         return player;
     }
 
-    /// <summary>Trims and lower-cases a raw name.</summary>
+    /// <summary>Trims and lower-cases a raw name for uniqueness comparisons.</summary>
     public static string Normalize(string raw)
-        => raw.Trim().ToLower();
+        => raw.Trim().ToLowerInvariant();
 }

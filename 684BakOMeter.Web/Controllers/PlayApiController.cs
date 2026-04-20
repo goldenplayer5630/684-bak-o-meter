@@ -47,17 +47,6 @@ public class PlayApiController : ControllerBase
         if (request.DurationMs <= 0)
             return BadRequest(new { error = "Duration must be positive." });
 
-        // Check whether the player already has a better record for this type
-        var existing = await _attempts.GetPersonalBestAsync(request.PlayerId, chugType);
-        bool isNewBest = existing is null || request.DurationMs < existing.DurationMs;
-
-        if (isNewBest && existing is not null)
-        {
-            // if this attempt is a new best, mark the old one as not a high score anymore
-            existing.IsHighScore = false;
-            await _attempts.UpdateAsync(existing);
-        }
-
         var now = DateTime.UtcNow;
         var attempt = new ChugAttempt
         {
@@ -66,7 +55,7 @@ public class PlayApiController : ControllerBase
             EndedAt    = now,
             DurationMs = request.DurationMs,
             ChugType   = chugType,
-            IsHighScore = isNewBest,
+            // IsHighScore is calculated and set by the repository
         };
 
         await _attempts.AddAsync(attempt);
@@ -79,7 +68,7 @@ public class PlayApiController : ControllerBase
             rank,
             durationMs = attempt.DurationMs,
             duration   = $"{attempt.DurationMs / 1000.0:F3}s",
-            isNewBest  = isNewBest,
+            isNewBest  = attempt.IsHighScore,
         });
     }
 }

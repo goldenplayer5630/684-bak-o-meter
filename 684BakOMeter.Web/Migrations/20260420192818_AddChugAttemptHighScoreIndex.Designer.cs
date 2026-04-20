@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using _684BakOMeter.Web.Data.Persistence;
@@ -11,9 +12,11 @@ using _684BakOMeter.Web.Data.Persistence;
 namespace _684BakOMeter.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260420192818_AddChugAttemptHighScoreIndex")]
+    partial class AddChugAttemptHighScoreIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -41,6 +44,9 @@ namespace _684BakOMeter.Web.Migrations
                     b.Property<DateTime>("EndedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsHighScore")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -59,7 +65,8 @@ namespace _684BakOMeter.Web.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayerId");
+                    b.HasIndex("PlayerId", "ChugType", "IsHighScore")
+                        .HasDatabaseName("IX_ChugAttempts_PlayerId_ChugType_IsHighScore");
 
                     b.ToTable("ChugAttempts");
                 });

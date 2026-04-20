@@ -88,6 +88,8 @@ public class CalibrationService
         {
             EmptyThreshold = emptyThreshold,
             FullThreshold = fullThreshold,
+            EmptyContainerWeight = emptyVal,
+            FullContainerWeight = fullVal,
         };
     }
 }

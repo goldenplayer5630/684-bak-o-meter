@@ -10,15 +10,26 @@ namespace _684BakOMeter.Web.Services;
 /// </summary>
 public class ChugSessionConfig
 {
-    /// <summary>Above this value an empty glass is on the scale (≥ 50 000).</summary>
+    /// <summary>Above this value an empty glass is on the scale.</summary>
     public decimal EmptyThreshold { get; init; } = 50_000m;
 
-    /// <summary>Above this value the glass is considered full (≥ 75 000).</summary>
+    /// <summary>Above this value the glass is considered full.</summary>
     public decimal FullThreshold { get; init; } = 70_000m;
 
     /// <summary>
-    /// Tolerance for the invalid check. If the glass comes back within this
-    /// range of the weight when it was lifted, it's considered not drunk.
+    /// The calibrated weight of the empty container (glass or pul).
+    /// Used to determine if a returned glass was drunk: the settled weight
+    /// after return must be below this value plus a tolerance margin.
     /// </summary>
-    public decimal InvalidTolerance { get; init; } = 10_000m;
+    public decimal EmptyContainerWeight { get; init; } = 67_000m;
+
+    /// <summary>
+    /// The calibrated weight of the full container.
+    /// Used together with <see cref="EmptyContainerWeight"/> to compute
+    /// relative tolerance margins for the invalid check.
+    /// </summary>
+    public decimal FullContainerWeight { get; init; } = 82_000m;
+
+    /// <summary>Seconds to wait during validation for the sensor to settle.</summary>
+    public const int ValidationDelaySeconds = 5;
 }

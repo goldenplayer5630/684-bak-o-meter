@@ -63,13 +63,14 @@ public class NfcService
     public async Task<(Player Player, NfcTag Tag, string? Error)> CreateUserFromNfcAsync(
         string rawName, string tagUid)
     {
-        var normalizedName = rawName.Trim().ToLower();
+        var displayName = rawName.Trim();
+        var normalizedName = displayName.ToLowerInvariant();
         var hashedUid = NfcUidHasher.Hash(tagUid);
 
-        if (string.IsNullOrEmpty(normalizedName))
+        if (string.IsNullOrEmpty(displayName))
             return (null!, null!, "Naam mag niet leeg zijn.");
 
-        // Check unique username
+        // Check unique username (case-insensitive)
         var existingPlayer = await _players.GetByNameAsync(normalizedName);
         if (existingPlayer is not null)
             return (null!, null!, "Deze naam is al in gebruik.");
@@ -79,7 +80,7 @@ public class NfcService
         if (existingTag is not null)
             return (null!, null!, "Deze NFC tag is al gekoppeld aan een andere speler.");
 
-        var player = new Player { Name = normalizedName };
+        var player = new Player { Name = displayName };
         await _players.AddAsync(player);
 
         var tag = new NfcTag

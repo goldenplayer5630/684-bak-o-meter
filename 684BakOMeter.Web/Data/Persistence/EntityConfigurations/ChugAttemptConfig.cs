@@ -29,8 +29,9 @@ public class ChugAttemptConfig : IEntityTypeConfiguration<ChugAttempt>
         builder.Property(ca => ca.DurationMs)
                .IsRequired();
 
-        builder.Property(ca => ca.IsHighScore)
-               .IsRequired();
+        // IsHighScore is not stored — the repository computes it on retrieval
+        // by finding the lowest DurationMs (ties broken by earliest Id) per player + chug type.
+        builder.Ignore(ca => ca.IsHighScore);
 
         // ChugType enum persisted as its string name for readability in the database
         builder.Property(ca => ca.ChugType)

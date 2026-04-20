@@ -51,9 +51,11 @@ public class ChugSessionTests
         var session = CreateSession();
         session.AddValue(100m);
         session.AddValue(200m);
-        session.AddValue(300m); // window=2, so 100 is dropped
+        session.AddValue(300m);
+        session.AddValue(400m);
+        session.AddValue(500m); // window=4, so 100 is dropped
 
-        Assert.Equal(250m, session.CurrentAverage);
+        Assert.Equal(350m, session.CurrentAverage); // avg(200,300,400,500)
     }
 
     [Fact]
@@ -61,6 +63,8 @@ public class ChugSessionTests
     {
         var session = CreateSession();
         session.AddValue(100m);
+        session.AddValue(200m);
+        session.AddValue(300m);
         Assert.False(session.HasEnoughValues);
     }
 
@@ -68,9 +72,46 @@ public class ChugSessionTests
     public void HasEnoughValues_TrueWhenWindowFilled()
     {
         var session = CreateSession();
-        session.AddValue(100m);
-        session.AddValue(200m);
+        for (int i = 0; i < ChugSession.AverageWindow; i++)
+            session.AddValue(100m);
         Assert.True(session.HasEnoughValues);
+    }
+
+    // --- Validation buffer ---
+
+    [Fact]
+    public void AddValidationValue_IgnoresFirstSpikeReadings()
+    {
+        var session = CreateSession();
+        // First ImpactSpikeIgnoreCount values are discarded
+        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
+            session.AddValidationValue(99_000m); // spike values
+
+        Assert.Null(session.SettledValidationAverage);
+    }
+
+    [Fact]
+    public void AddValidationValue_CollectsAfterSpikePeriod()
+    {
+        var session = CreateSession();
+        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
+            session.AddValidationValue(99_000m);
+
+        session.AddValidationValue(65_000m);
+        session.AddValidationValue(66_000m);
+
+        Assert.Equal(65_500m, session.SettledValidationAverage);
+    }
+
+    [Fact]
+    public void ValidationReadingCount_IncludesSpikeAndSettled()
+    {
+        var session = CreateSession();
+        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
+            session.AddValidationValue(99_000m);
+        session.AddValidationValue(65_000m);
+
+        Assert.Equal(ChugSession.ImpactSpikeIgnoreCount + 1, session.ValidationReadingCount);
     }
 
     // --- MarkStarted ---

@@ -73,15 +73,7 @@ public static class DbSeeder
                 DurationMs = duration,
                 ChugType = chugTypes[random.Next(chugTypes.Length)],
                 Notes = notes[random.Next(notes.Length)],
-                IsHighScore = false
             });
-        }
-
-        // Mark the fastest attempt per player + chug type as the active high score.
-        foreach (var group in attempts.GroupBy(a => new { a.PlayerId, a.ChugType }))
-        {
-            var best = group.OrderBy(a => a.DurationMs).ThenBy(a => a.StartedAt).First();
-            best.IsHighScore = true;
         }
 
         db.ChugAttempts.AddRange(attempts);

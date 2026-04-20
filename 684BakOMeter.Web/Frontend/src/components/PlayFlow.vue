@@ -78,7 +78,7 @@
                     <span v-if="scale1State.state === 'WaitingForFull'">PLAATS EEN VOLLE BAK</span>
                     <span v-if="scale1State.state === 'Ready'">TREK EEN BAK!</span>
                     <span v-if="scale1State.state === 'Running'">ZUIPEN MET JE DONDER!</span>
-                    <span v-if="scale1State.state === 'Validating'">VALIDEREN...</span>
+                    <span v-if="scale1State.state === 'Validating'">VALIDEREN... (LAAT GLAS LOS!!!)</span>
                 </div>
             </template>
 
@@ -357,7 +357,7 @@ function onChugCompleted(data) {
 function onChugInvalid(data) {
     // Don't save — just show the shame message and go back to menu
     step.value = 'invalid';
-    resultCountdown.value = 10;
+    resultCountdown.value = 5;
     resultInterval = setInterval(() => {
         resultCountdown.value--;
         if (resultCountdown.value <= 0) { clearInterval(resultInterval); window.location.href = '/'; }
@@ -391,7 +391,7 @@ async function saveAndShowResult() {
 
     spawnConfetti();
     step.value = 'result';
-    resultCountdown.value = 10;
+    resultCountdown.value = 5;
     resultInterval = setInterval(() => {
         resultCountdown.value--;
         if (resultCountdown.value <= 0) { clearInterval(resultInterval); window.location.href = '/'; }

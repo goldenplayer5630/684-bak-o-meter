@@ -9,6 +9,10 @@ namespace _684BakOMeter.Web.Services;
 /// Singleton service that manages chug sessions driven by scale measurements.
 /// Maintains a per-scale state machine (WaitingForFull → Ready → Running → Completed)
 /// and pushes live updates to the frontend via SignalR.
+///
+/// Persistence of completed attempts (including IsHighScore calculation) is handled
+/// by <see cref="Data.Repositories.IChugAttemptRepository.AddAsync"/> — this service
+/// only manages in-memory session state and real-time events.
 /// </summary>
 public class ChugService
 {
@@ -82,8 +86,12 @@ public class ChugService
         if (session.State is ChugSessionState.Completed or ChugSessionState.Invalid)
             return;
 
-        // Add to rolling average
+        // Add to rolling average (used for state-machine transitions)
         session.AddValue(value);
+
+        // During validation, also collect readings in the spike-filtered buffer
+        if (session.State == ChugSessionState.Validating)
+            session.AddValidationValue(value);
 
         if (!session.HasEnoughValues)
         {
@@ -121,17 +129,19 @@ public class ChugService
                 }, ct);
                 break;
 
-            // Glass placed back — enter validating state (2-second settle period)
+            // Glass placed back — enter validating state (5-second settle period)
             case ChugSessionState.Running when avg >= _config.EmptyThreshold:
             {
                 session.State = ChugSessionState.Validating;
                 session.FreezeEndTime(); // freeze the timer now, state stays Validating
-                _logger.LogInformation("Session {Id}: Glass placed back — validating... (avg={Avg:F0})", session.SessionId, avg);
+                _logger.LogInformation(
+                    "Session {Id}: Glass placed back — entering {Seconds}s validation (avg={Avg:F0})",
+                    session.SessionId, ChugSessionConfig.ValidationDelaySeconds, avg);
                 _ = ValidateAfterDelayAsync(session, ct);
                 break;
             }
 
-            // While validating, ignore further measurements
+            // While validating, keep collecting readings (handled above) but don't transition
             case ChugSessionState.Validating:
                 break;
         }
@@ -139,27 +149,68 @@ public class ChugService
         await SendUpdateAsync(session, ct);
     }
 
-    /// <summary>Waits 3 seconds then validates the chug based on the settled weight.</summary>
+    /// <summary>
+    /// Waits for the validation settle period, then determines whether the
+    /// player actually drank. Uses a spike-filtered validation buffer so
+    /// the initial impact of placing the glass back does not pollute the result.
+    /// 
+    /// Invalid = the settled weight is still close to the full-glass weight,
+    /// meaning the player put a full glass back without drinking.
+    /// 
+    /// The check uses a relative threshold: if more than 70% of the liquid
+    /// weight is still present, the chug is invalid. This adapts automatically
+    /// to different calibration values and container types.
+    /// </summary>
     private async Task ValidateAfterDelayAsync(ChugSession session, CancellationToken ct)
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            await Task.Delay(TimeSpan.FromSeconds(ChugSessionConfig.ValidationDelaySeconds), ct);
         }
         catch (OperationCanceledException)
         {
             return;
         }
 
-        // Re-check the settled average after the delay
-        var avg = session.CurrentAverage;
-        var liftWeight = session.LiftWeight ?? _config.FullThreshold;
-        var isStillFull = avg > liftWeight - 1000m;
+        // Use the spike-filtered validation buffer if available, otherwise fall back to rolling average
+        var settledAvg = session.SettledValidationAverage ?? session.CurrentAverage;
+        var liftWeight = session.LiftWeight ?? _config.FullContainerWeight;
+
+        // The weight of the liquid alone = full container − empty container.
+        // We use calibration values rather than the live lift weight to avoid
+        // per-session noise affecting the threshold.
+        var liquidWeight = _config.FullContainerWeight - _config.EmptyContainerWeight;
+
+        // Invalid if more than 70% of the liquid is still present.
+        // This gives a very generous margin: even if 30% spills or the scale
+        // drifts, the chug is still accepted. Only a clearly undrunk glass fails.
+        const decimal InvalidFraction = 0.70m;
+        var invalidThreshold = _config.EmptyContainerWeight + (liquidWeight * InvalidFraction);
+
+        var isStillFull = settledAvg > invalidThreshold;
+
+        _logger.LogInformation(
+            "Session {Id}: Validation result — settledAvg={Settled:F0}, " +
+            "emptyContainer={Empty:F0}, fullContainer={Full:F0}, " +
+            "liquidWeight={Liquid:F0}, invalidThreshold={Threshold:F0}, " +
+            "liftWeight={Lift:F0}, spikeFiltered={SpikeFiltered}, " +
+            "validationReadings={Readings}, verdict={Verdict}",
+            session.SessionId, settledAvg,
+            _config.EmptyContainerWeight, _config.FullContainerWeight,
+            liquidWeight, invalidThreshold,
+            liftWeight, session.SettledValidationAverage.HasValue,
+            session.ValidationReadingCount,
+            isStillFull ? "INVALID" : "COMPLETED");
 
         if (isStillFull)
         {
             session.MarkInvalid();
-            _logger.LogInformation("Session {Id}: Validated — glass still full — invalid! (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, avg, liftWeight);
+            _logger.LogWarning(
+                "Session {Id}: INVALID — glass still full. " +
+                "Settled avg {Settled:F0} > threshold {Threshold:F0} " +
+                "(>{Pct}% of liquid still present)",
+                session.SessionId, settledAvg, invalidThreshold, InvalidFraction * 100);
+
             await _hubContext.Clients.All.SendAsync("ChugInvalid", new
             {
                 sessionId = session.SessionId,
@@ -170,7 +221,11 @@ public class ChugService
         else
         {
             session.State = ChugSessionState.Completed;
-            _logger.LogInformation("Session {Id}: Validated — completed! Duration={Duration}ms (avg={Avg:F0}, liftWeight={Lift:F0})", session.SessionId, session.DurationMs, avg, liftWeight);
+            _logger.LogInformation(
+                "Session {Id}: COMPLETED — Duration={Duration}ms. " +
+                "Settled avg {Settled:F0} <= threshold {Threshold:F0}",
+                session.SessionId, session.DurationMs, settledAvg, invalidThreshold);
+
             await _hubContext.Clients.All.SendAsync("ChugCompleted", new
             {
                 sessionId = session.SessionId,

@@ -17,7 +17,8 @@ public class ChugSessionConfigTests
         var config = new ChugSessionConfig();
         Assert.Equal(50_000m, config.EmptyThreshold);
         Assert.Equal(70_000m, config.FullThreshold);
-        Assert.Equal(10_000m, config.InvalidTolerance);
+        Assert.Equal(67_000m, config.EmptyContainerWeight);
+        Assert.Equal(82_000m, config.FullContainerWeight);
     }
 
     [Fact]
@@ -27,11 +28,19 @@ public class ChugSessionConfigTests
         {
             EmptyThreshold = 30_000m,
             FullThreshold = 60_000m,
-            InvalidTolerance = 5_000m,
+            EmptyContainerWeight = 55_000m,
+            FullContainerWeight = 75_000m,
         };
 
         Assert.Equal(30_000m, config.EmptyThreshold);
         Assert.Equal(60_000m, config.FullThreshold);
-        Assert.Equal(5_000m, config.InvalidTolerance);
+        Assert.Equal(55_000m, config.EmptyContainerWeight);
+        Assert.Equal(75_000m, config.FullContainerWeight);
+    }
+
+    [Fact]
+    public void ValidationDelaySeconds_Is5()
+    {
+        Assert.Equal(5, ChugSessionConfig.ValidationDelaySeconds);
     }
 }

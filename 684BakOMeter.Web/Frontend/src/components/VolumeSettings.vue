@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const STORAGE_KEY = 'bak-o-meter-volume';
 const volume = ref(50);
@@ -23,11 +23,26 @@ function onVolumeChange() {
     window.dispatchEvent(new CustomEvent('volume-change', { detail: volume.value }));
 }
 
+function onKeyDown(e) {
+    if (e.key === 'ArrowRight') {
+        volume.value = Math.min(100, volume.value + 5);
+        onVolumeChange();
+    } else if (e.key === 'ArrowLeft') {
+        volume.value = Math.max(0, volume.value - 5);
+        onVolumeChange();
+    }
+}
+
 onMounted(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== null) {
         volume.value = parseInt(stored, 10);
     }
+    window.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', onKeyDown);
 });
 </script>
 
