@@ -8,7 +8,7 @@ public class ChugTypeLabelsTests
     [Theory]
     [InlineData(ChugType.Bak, "Bak")]
     [InlineData(ChugType.Pul, "Pul")]
-    [InlineData(ChugType.BakPlus, "Bak+")]
+    [InlineData(ChugType.BakPlus, "Bak++")]
     [InlineData(ChugType.IceFles, "Ice Fles")]
     [InlineData(ChugType.SpaRood, "Spa Rood")]
     [InlineData(ChugType.Wijn, "Wijn")]

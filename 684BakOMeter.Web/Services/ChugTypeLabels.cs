@@ -10,7 +10,7 @@ public static class ChugTypeLabels
     {
         { ChugType.Bak,     "Bak" },
         { ChugType.Pul,     "Pul" },
-        { ChugType.BakPlus, "Bak+" },
+        { ChugType.BakPlus, "Bak++" },
         { ChugType.IceFles, "Ice Fles" },
         { ChugType.SpaRood, "Spa Rood" },
         { ChugType.Wijn,    "Wijn" },
@@ -22,7 +22,7 @@ public static class ChugTypeLabels
     {
         { ChugType.Bak,     "Bak" },
         { ChugType.Pul,     "Pul" },
-        { ChugType.BakPlus, "Bak+" },
+        { ChugType.BakPlus, "Bak++" },
         { ChugType.SpaRood, "Spa Rood" },
         { ChugType.Wijn,    "Wijn" },
     };
