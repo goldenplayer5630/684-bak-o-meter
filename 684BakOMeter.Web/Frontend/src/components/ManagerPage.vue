@@ -31,7 +31,7 @@
                     Geen resultaten voor "{{ searchQuery }}".
                 </div>
                 <div v-else class="leaderboard-scroll">
-                    <div v-for="(u, i) in filteredUsers"
+                    <div v-for="(u, i) in visibleUsers"
                          :key="u.playerId"
                          class="leaderboard-row"
                          :class="{ selected: !confirmState && focus === 'users' && selectedFilteredIdx === i }"
@@ -39,6 +39,9 @@
                         <span class="leaderboard-rank">#{{ i + 1 }}</span>
                         <span class="leaderboard-name">{{ u.playerName }}</span>
                         <span class="leaderboard-time">{{ u.attemptCount }}</span>
+                    </div>
+                    <div v-if="filteredUsers.length > 10" class="manager-more-results">
+                        +{{ filteredUsers.length - 10 }} meer — typ verder om te filteren
                     </div>
                 </div>
             </div>
@@ -107,6 +110,10 @@ const filteredUsers = computed(() => {
     return users.value.filter(u => u.playerName.toLowerCase().includes(q));
 });
 
+const visibleUsers = computed(() => {
+    return filteredUsers.value.slice(0, 10);
+});
+
 // Reset selection when search results change
 watch(filteredUsers, () => { selectedFilteredIdx.value = 0; });
 
@@ -115,7 +122,7 @@ watch(focus, (next, prev) => {
     if (prev === 'users' && next !== 'users') searchQuery.value = '';
 });
 
-const selectedUser = computed(() => filteredUsers.value[selectedFilteredIdx.value] ?? null);
+const selectedUser = computed(() => visibleUsers.value[selectedFilteredIdx.value] ?? null);
 
 const confirmMessage = computed(() => {
     if (confirmState.value === 'all') {
@@ -148,7 +155,7 @@ function moveFocus(step) {
 }
 
 function moveUser(step) {
-    const len = filteredUsers.value.length;
+    const len = visibleUsers.value.length;
     if (len === 0) return;
     selectedFilteredIdx.value = (selectedFilteredIdx.value + step + len) % len;
 }
@@ -349,6 +356,16 @@ loadUsers().then(() => {
 
 .manager-message {
     min-height: 1.2rem;
+}
+
+.manager-more-results {
+    font-family: var(--font-arcade);
+    font-size: 0.45rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 0.5rem;
+    margin-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .manager-confirm {

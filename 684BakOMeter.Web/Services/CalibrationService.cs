@@ -64,7 +64,7 @@ public class CalibrationService
 
     /// <summary>
     /// Builds a <see cref="ChugSessionConfig"/> from the stored calibration,
-    /// using glass or pul thresholds based on the chug type.
+    /// using the appropriate container thresholds based on the chug type.
     /// Falls back to default values when no calibration exists.
     /// </summary>
     public ChugSessionConfig BuildSessionConfig(Domain.Entities.ChugType chugType)
@@ -73,10 +73,36 @@ public class CalibrationService
         if (cal is null)
             return new ChugSessionConfig();
 
-        bool isPul = chugType == Domain.Entities.ChugType.Pul;
+        decimal emptyVal;
+        decimal fullVal;
 
-        decimal emptyVal = isPul ? cal.EmptyPul : cal.EmptyGlass;
-        decimal fullVal = isPul ? cal.FullPul : cal.FullGlass;
+        switch (chugType)
+        {
+            case Domain.Entities.ChugType.Pul:
+                emptyVal = cal.EmptyPul;
+                fullVal = cal.FullPul;
+                break;
+            case Domain.Entities.ChugType.Pitcher:
+                emptyVal = cal.EmptyPitcher;
+                fullVal = cal.FullPitcher;
+                break;
+            case Domain.Entities.ChugType.IceFles:
+                emptyVal = cal.EmptyIceBottle;
+                fullVal = cal.FullIceBottle;
+                break;
+            case Domain.Entities.ChugType.Wijn:
+                emptyVal = cal.EmptyWijnBak;
+                fullVal = cal.FullWijnBak;
+                break;
+            case Domain.Entities.ChugType.Bak:
+            case Domain.Entities.ChugType.BakPlus:
+            case Domain.Entities.ChugType.SpaRood:
+            default:
+                emptyVal = cal.EmptyGlass;
+                fullVal = cal.FullGlass;
+                break;
+        }
+
         decimal nothingVal = cal.Nothing;
 
         // EmptyThreshold: midpoint between nothing and the empty container

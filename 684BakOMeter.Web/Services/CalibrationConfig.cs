@@ -11,5 +11,11 @@ public class CalibrationConfig
     public decimal FullGlass { get; set; }
     public decimal EmptyPul { get; set; }
     public decimal FullPul { get; set; }
+    public decimal EmptyPitcher { get; set; }
+    public decimal FullPitcher { get; set; }
+    public decimal EmptyIceBottle { get; set; }
+    public decimal FullIceBottle { get; set; }
+    public decimal EmptyWijnBak { get; set; }
+    public decimal FullWijnBak { get; set; }
     public DateTime? LastUpdatedUtc { get; set; }
 }

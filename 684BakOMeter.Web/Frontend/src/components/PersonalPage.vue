@@ -101,9 +101,10 @@ import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import ManageNfcTags from './ManageNfcTags.vue';
 import { useKeyController } from '../composables/useKeyController.js';
-import { useBgMusic } from '../composables/useBgMusic.js';
+import { useGlobalMusic } from '../composables/useGlobalMusic.js';
 
-useBgMusic('/music/trekeenbak.mp3');
+// Use the centralized global music service
+useGlobalMusic();
 
 // --- Phase control ---
 const phase = ref('scan');

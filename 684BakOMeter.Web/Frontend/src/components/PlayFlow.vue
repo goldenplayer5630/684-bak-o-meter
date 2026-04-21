@@ -156,7 +156,7 @@
         <template v-if="step === 'invalid'">
             <div class="result-screen">
                 <div class="result-title arcade-blink" style="color: #ff4081;">ONGELDIG!</div>
-                <div class="arcade-prompt mt-3">LAFFE BORRELAAR!<br>JE MAG GEEN VOL GLAS TERUG ZETTEN</div>
+                <div class="arcade-prompt mt-3">LAFFE BORRELAAR!</div>
                 <div class="result-countdown mt-3">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
             </div>
         </template>

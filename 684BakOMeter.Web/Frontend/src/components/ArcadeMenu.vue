@@ -58,11 +58,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useBgMusic } from '../composables/useBgMusic.js';
-
-useBgMusic('/music/trekeenbak.mp3');
+import { useGlobalMusic } from '../composables/useGlobalMusic.js';
 import { useIdleTimeout } from '../composables/useIdleTimeout.js';
 import { useKeyController } from '../composables/useKeyController.js';
+
+// Use the centralized global music service
+useGlobalMusic();
 
 // --- SVG icon paths (inline, no emoji dependency) ---
 const ICONS = {

@@ -148,7 +148,20 @@ body.kompas-mode.arcade-body {
     background-image: none !important;
 }
 body.kompas-mode.arcade-body::before {
-    background-image: url('/images/kompas.jpg');
+    background-image: url('/images/oers.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    opacity: 0.25;
+    z-index: 9999;
+}
+
+/* klootviool mode easter egg */
+body.klootviool-mode.arcade-body {
+    background-image: none !important;
+}
+body.klootviool-mode.arcade-body::before {
+    background-image: url('/images/klootviool.png');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center center;

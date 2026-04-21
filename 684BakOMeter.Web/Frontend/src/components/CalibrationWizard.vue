@@ -66,16 +66,23 @@
 import { ref, onUnmounted } from 'vue';
 import * as signalR from '@microsoft/signalr';
 import { useKeyController } from '../composables/useKeyController.js';
-import { useBgMusic } from '../composables/useBgMusic.js';
+import { useGlobalMusic } from '../composables/useGlobalMusic.js';
 
-useBgMusic('/music/trekeenbak.mp3');
+// Use the centralized global music service
+useGlobalMusic();
 
 const steps = [
-    { key: 'nothing',    title: 'NIETS',       instruction: 'Zorg dat er NIETS op de weegschaal staat.' },
-    { key: 'emptyGlass', title: 'LEEG GLAS',   instruction: 'Plaats een LEEG GLAS op de weegschaal.' },
-    { key: 'fullGlass',  title: 'VOL GLAS',    instruction: 'Plaats een VOL GLAS op de weegschaal.' },
-    { key: 'emptyPul',   title: 'LEGE PUL',    instruction: 'Plaats een LEGE PUL op de weegschaal.' },
-    { key: 'fullPul',    title: 'VOLLE PUL',   instruction: 'Plaats een VOLLE PUL op de weegschaal.' },
+    { key: 'nothing',        title: 'NIETS',          instruction: 'Zorg dat er NIETS op de weegschaal staat.' },
+    { key: 'emptyGlass',     title: 'LEEG GLAS',      instruction: 'Plaats een LEEG GLAS op de weegschaal.' },
+    { key: 'fullGlass',      title: 'VOL GLAS',       instruction: 'Plaats een VOL GLAS op de weegschaal.' },
+    { key: 'emptyPul',       title: 'LEGE PUL',       instruction: 'Plaats een LEGE PUL op de weegschaal.' },
+    { key: 'fullPul',        title: 'VOLLE PUL',      instruction: 'Plaats een VOLLE PUL op de weegschaal.' },
+    { key: 'emptyPitcher',   title: 'LEGE PITCHER',   instruction: 'Plaats een LEGE PITCHER op de weegschaal.' },
+    { key: 'fullPitcher',    title: 'VOLLE PITCHER',  instruction: 'Plaats een VOLLE PITCHER op de weegschaal.' },
+    { key: 'emptyIceBottle', title: 'LEGE ICE FLES',  instruction: 'Plaats een LEGE ICE FLES op de weegschaal.' },
+    { key: 'fullIceBottle',  title: 'VOLLE ICE FLES', instruction: 'Plaats een VOLLE ICE FLES op de weegschaal.' },
+    { key: 'emptyWijnBak',   title: 'LEEG WIJN BAK',  instruction: 'Plaats een LEEG WIJN BAK op de weegschaal.' },
+    { key: 'fullWijnBak',    title: 'VOL WIJN BAK',   instruction: 'Plaats een VOL WIJN BAK op de weegschaal.' },
 ];
 
 const step = ref(0);

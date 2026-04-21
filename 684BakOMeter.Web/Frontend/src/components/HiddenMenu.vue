@@ -29,9 +29,10 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useKeyController } from '../composables/useKeyController.js';
-import { useBgMusic } from '../composables/useBgMusic.js';
+import { useGlobalMusic } from '../composables/useGlobalMusic.js';
 
-useBgMusic('/music/trekeenbak.mp3');
+// Use the centralized global music service
+useGlobalMusic();
 
 const ICONS = {
     beer:  '<path d="M5 3h11l-1 13a4 4 0 01-4 4H9a4 4 0 01-4-4L5 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 7h13v3a4 4 0 01-3 3.87" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',

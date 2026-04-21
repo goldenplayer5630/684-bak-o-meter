@@ -23,14 +23,14 @@ public static class ChugTypeLabels
         { ChugType.Bak,     "Bak" },
         { ChugType.Pul,     "Pul" },
         { ChugType.BakPlus, "Bak+" },
-        { ChugType.IceFles, "Ice Fles" },
         { ChugType.SpaRood, "Spa Rood" },
+        { ChugType.Wijn,    "Wijn" },
     };
 
-    /// <summary>Hidden easter-egg chug types (Wijn, Pitcher).</summary>
+    /// <summary>Hidden easter-egg chug types (IceFles, Pitcher).</summary>
     public static readonly Dictionary<ChugType, string> Hidden = new()
     {
-        { ChugType.Wijn,    "Wijn" },
+        { ChugType.IceFles, "Ice Fles" },
         { ChugType.Pitcher, "Pitcher" },
     };
 
