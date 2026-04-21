@@ -33,9 +33,9 @@ public class ChugTypeLabelsTests
     }
 
     [Fact]
-    public void Hidden_ContainsWijnAndPitcher()
+    public void Hidden_ContainsIceFlesAndPitcher()
     {
-        Assert.Contains(ChugType.Wijn, ChugTypeLabels.Hidden.Keys);
+        Assert.Contains(ChugType.IceFles, ChugTypeLabels.Hidden.Keys);
         Assert.Contains(ChugType.Pitcher, ChugTypeLabels.Hidden.Keys);
     }
 
