@@ -63,6 +63,25 @@ public class ChugApiController : ControllerBase
     }
 
     /// <summary>
+    /// Confirms the baseline weight for a session from the player pressing SPACE.
+    /// The weight must be stable. Returns the captured baseline on success, or a
+    /// user-friendly message if the scale is not ready yet.
+    /// POST /api/chug/confirm-baseline/{scaleNumber}
+    /// </summary>
+    [HttpPost("confirm-baseline/{scaleNumber:int}")]
+    public IActionResult ConfirmBaseline(int scaleNumber)
+    {
+        var result = _chugService.ConfirmBaseline(scaleNumber);
+        return Ok(new
+        {
+            success        = result.Success,
+            message        = result.Message,
+            baselineWeight = result.BaselineWeight,
+            state          = result.State,
+        });
+    }
+
+    /// <summary>
     /// Cancels the active session on a given scale.
     /// POST /api/chug/cancel/{scaleNumber}
     /// </summary>

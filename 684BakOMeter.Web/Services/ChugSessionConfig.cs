@@ -1,35 +1,23 @@
 namespace _684BakOMeter.Web.Services;
 
 /// <summary>
-/// Scale thresholds used by the chug detection state machine.
-/// Values are raw decimal readings from the scale sensor (not grams).
-/// 
-/// No glass  : below <see cref="EmptyThreshold"/>
-/// Empty glass: between <see cref="EmptyThreshold"/> and <see cref="FullThreshold"/>
-/// Full glass : above <see cref="FullThreshold"/>
+/// Detection thresholds for the manual-baseline chug flow.
+/// All values are raw decimal readings from the scale sensor (not grams).
+/// Defaults are tuned for the 684 Bak-O-Meter load cell setup.
 /// </summary>
 public class ChugSessionConfig
 {
-    /// <summary>Above this value an empty glass is on the scale.</summary>
-    public decimal EmptyThreshold { get; init; } = 50_000m;
-
-    /// <summary>Above this value the glass is considered full.</summary>
-    public decimal FullThreshold { get; init; } = 70_000m;
+    /// <summary>
+    /// Fraction of the captured baseline weight the smoothed reading must drop
+    /// below before a lift is confirmed. E.g. 0.2 means the weight must fall
+    /// below 80 % of the baseline (drop by at least 20%). Applies symmetrically to return detection.
+    /// Tuned for scale readings in the hundreds range.
+    /// </summary>
+    public decimal LiftDropFactor { get; init; } = 0.1m;
 
     /// <summary>
-    /// The calibrated weight of the empty container (glass or pul).
-    /// Used to determine if a returned glass was drunk: the settled weight
-    /// after return must be below this value plus a tolerance margin.
+    /// Number of consecutive readings above the return threshold
+    /// required to confirm the glass has been returned and complete the chug.
     /// </summary>
-    public decimal EmptyContainerWeight { get; init; } = 67_000m;
-
-    /// <summary>
-    /// The calibrated weight of the full container.
-    /// Used together with <see cref="EmptyContainerWeight"/> to compute
-    /// relative tolerance margins for the invalid check.
-    /// </summary>
-    public decimal FullContainerWeight { get; init; } = 82_000m;
-
-    /// <summary>Seconds to wait during validation for the sensor to settle.</summary>
-    public const int ValidationDelaySeconds = 5;
+    public int ReturnConfirmReadings { get; init; } = 3;
 }

@@ -1,4 +1,4 @@
-using _684BakOMeter.Web.Domain.Entities;
+﻿using _684BakOMeter.Web.Domain.Entities;
 using _684BakOMeter.Web.Services;
 
 namespace _684BakOMeter.Tests.Services;
@@ -12,11 +12,20 @@ public class ChugSessionTests
         ScaleNumber = 1,
     };
 
+    /// <summary>Fills the rolling window with <paramref name="count"/> identical values.</summary>
+    private static void Fill(ChugSession session, decimal value, int count = ChugSession.AverageWindow)
+    {
+        for (int i = 0; i < count; i++)
+            session.AddValue(value);
+    }
+
+    // --- Initial state ---
+
     [Fact]
-    public void NewSession_StartsInWaitingForFull()
+    public void NewSession_StartsInWaitingForBaseline()
     {
         var session = CreateSession();
-        Assert.Equal(ChugSessionState.WaitingForFull, session.State);
+        Assert.Equal(ChugSessionState.WaitingForBaseline, session.State);
     }
 
     [Fact]
@@ -72,46 +81,68 @@ public class ChugSessionTests
     public void HasEnoughValues_TrueWhenWindowFilled()
     {
         var session = CreateSession();
-        for (int i = 0; i < ChugSession.AverageWindow; i++)
-            session.AddValue(100m);
+        Fill(session, 100m);
         Assert.True(session.HasEnoughValues);
     }
 
-    // --- Validation buffer ---
-
     [Fact]
-    public void AddValidationValue_IgnoresFirstSpikeReadings()
+    public void AddValue_TracksPreviousAverage()
     {
         var session = CreateSession();
-        // First ImpactSpikeIgnoreCount values are discarded
-        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
-            session.AddValidationValue(99_000m); // spike values
+        Fill(session, 100m);
+        var before = session.CurrentAverage;
+        session.AddValue(200m);
+        Assert.Equal(before, session.PreviousAverage);
+    }
 
-        Assert.Null(session.SettledValidationAverage);
+    // --- CaptureBaseline ---
+
+    [Fact]
+    public void CaptureBaseline_SetsBaselineWeight()
+    {
+        var session = CreateSession();
+        Fill(session, 80_000m);
+        session.CaptureBaseline();
+        Assert.Equal(80_000m, session.BaselineWeight);
     }
 
     [Fact]
-    public void AddValidationValue_CollectsAfterSpikePeriod()
+    public void CaptureBaseline_TransitionsToReadyToLift()
     {
         var session = CreateSession();
-        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
-            session.AddValidationValue(99_000m);
+        Fill(session, 80_000m);
+        session.CaptureBaseline();
+        Assert.Equal(ChugSessionState.ReadyToLift, session.State);
+    }
 
-        session.AddValidationValue(65_000m);
-        session.AddValidationValue(66_000m);
+    // --- IsLifted ---
 
-        Assert.Equal(65_500m, session.SettledValidationAverage);
+    [Fact]
+    public void IsLifted_FalseWhenNoBaseline()
+    {
+        var session = CreateSession();
+        Fill(session, 5_000m);
+        Assert.False(session.IsLifted(0.5m));
     }
 
     [Fact]
-    public void ValidationReadingCount_IncludesSpikeAndSettled()
+    public void IsLifted_FalseWhenWeightAboveDropThreshold()
     {
         var session = CreateSession();
-        for (int i = 0; i < ChugSession.ImpactSpikeIgnoreCount; i++)
-            session.AddValidationValue(99_000m);
-        session.AddValidationValue(65_000m);
+        Fill(session, 80_000m);
+        session.CaptureBaseline(); // baseline = 80_000
+        Fill(session, 75_000m);   // 75k > 80k * 0.5 = 40k
+        Assert.False(session.IsLifted(0.5m));
+    }
 
-        Assert.Equal(ChugSession.ImpactSpikeIgnoreCount + 1, session.ValidationReadingCount);
+    [Fact]
+    public void IsLifted_TrueWhenWeightDropsBelowThreshold()
+    {
+        var session = CreateSession();
+        Fill(session, 80_000m);
+        session.CaptureBaseline(); // baseline = 80_000
+        Fill(session, 30_000m);   // 30k < 80k * 0.5 = 40k
+        Assert.True(session.IsLifted(0.5m));
     }
 
     // --- MarkStarted ---
@@ -136,6 +167,80 @@ public class ChugSessionTests
         Assert.InRange(session.StartTime!.Value, before, after);
     }
 
+    // --- TrackReturn ---
+
+    [Fact]
+    public void TrackReturn_ReturnsFalseBeforeThresholdReached()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        Fill(session, 34_000m);
+        session.AddValue(80_000m); // count=1, need 3
+        bool result = session.TrackReturn(40_000m, 3);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TrackReturn_ReturnsTrueAfterConsecutiveConfirmedReadings()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        Fill(session, 34_000m);
+        bool result = false;
+        for (int i = 0; i < 3; i++)
+        {
+            session.AddValue(80_000m);
+            result = session.TrackReturn(40_000m, 3);
+        }
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void TrackReturn_ResetsCounterOnLowReading()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        Fill(session, 34_000m);
+        session.AddValue(80_000m);
+        session.TrackReturn(40_000m, 3); // count=1
+        Fill(session, 34_000m);          // avg drops below threshold
+        session.TrackReturn(40_000m, 3); // count reset to 0
+        session.AddValue(80_000m);
+        bool result = session.TrackReturn(40_000m, 3); // count=1 — not enough
+        Assert.False(result);
+    }
+
+    // --- MarkCompleted ---
+
+    [Fact]
+    public void MarkCompleted_SetsStateToCompleted()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        session.MarkCompleted();
+        Assert.Equal(ChugSessionState.Completed, session.State);
+    }
+
+    [Fact]
+    public void MarkCompleted_SetsEndTime()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        session.MarkCompleted();
+        Assert.NotNull(session.EndTime);
+    }
+
+    [Fact]
+    public void MarkCompleted_SetsDurationMs()
+    {
+        var session = CreateSession();
+        session.MarkStarted();
+        Thread.Sleep(50);
+        session.MarkCompleted();
+        Assert.NotNull(session.DurationMs);
+        Assert.True(session.DurationMs > 0);
+    }
+
     // --- ElapsedMs ---
 
     [Fact]
@@ -150,45 +255,17 @@ public class ChugSessionTests
     {
         var session = CreateSession();
         session.MarkStarted();
-
         Thread.Sleep(50);
         Assert.True(session.ElapsedMs > 0);
     }
 
-    // --- FreezeEndTime ---
-
     [Fact]
-    public void FreezeEndTime_DoesNotChangeState()
-    {
-        var session = CreateSession();
-        session.MarkStarted();
-        session.State = ChugSessionState.Validating;
-        session.FreezeEndTime();
-
-        Assert.Equal(ChugSessionState.Validating, session.State);
-    }
-
-    [Fact]
-    public void FreezeEndTime_SetsDurationMs()
+    public void ElapsedMs_FrozenAfterCompleted()
     {
         var session = CreateSession();
         session.MarkStarted();
         Thread.Sleep(50);
-        session.FreezeEndTime();
-
-        Assert.NotNull(session.DurationMs);
-        Assert.True(session.DurationMs > 0);
-    }
-
-    [Fact]
-    public void FreezeEndTime_FreezesElapsedMs()
-    {
-        var session = CreateSession();
-        session.MarkStarted();
-        Thread.Sleep(50);
-        session.State = ChugSessionState.Validating;
-        session.FreezeEndTime();
-
+        session.MarkCompleted();
         var frozen = session.ElapsedMs;
         Thread.Sleep(50);
         Assert.Equal(frozen, session.ElapsedMs);
@@ -209,25 +286,5 @@ public class ChugSessionTests
         var session = CreateSession();
         session.MarkStarted();
         Assert.Null(session.DurationMs);
-    }
-
-    // --- MarkInvalid ---
-
-    [Fact]
-    public void MarkInvalid_SetsStateToInvalid()
-    {
-        var session = CreateSession();
-        session.MarkStarted();
-        session.MarkInvalid();
-        Assert.Equal(ChugSessionState.Invalid, session.State);
-    }
-
-    [Fact]
-    public void MarkInvalid_SetsEndTime()
-    {
-        var session = CreateSession();
-        session.MarkStarted();
-        session.MarkInvalid();
-        Assert.NotNull(session.EndTime);
     }
 }

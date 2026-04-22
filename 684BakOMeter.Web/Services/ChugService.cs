@@ -1,4 +1,4 @@
-ï»¿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using _684BakOMeter.Web.Domain.Entities;
 using _684BakOMeter.Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -6,37 +6,27 @@ using Microsoft.AspNetCore.SignalR;
 namespace _684BakOMeter.Web.Services;
 
 /// <summary>
-/// Singleton service that manages chug sessions driven by scale measurements.
-/// Maintains a per-scale state machine (WaitingForFull â†’ Ready â†’ Running â†’ Completed)
-/// and pushes live updates to the frontend via SignalR.
+/// Singleton service that manages chug sessions on the manual-baseline flow.
 ///
-/// Persistence of completed attempts (including IsHighScore calculation) is handled
-/// by <see cref="Data.Repositories.IChugAttemptRepository.AddAsync"/> â€” this service
-/// only manages in-memory session state and real-time events.
+/// Flow per scale:
+///   1. <see cref="StartSession"/> — creates a session in WaitingForBaseline.
+///   2. <see cref="ConfirmBaseline"/> — called when the player presses SPACE with a
+///      full glass on the scale; captures the stable weight as the lift reference.
+///   3. <see cref="HandleMeasurementAsync"/> — drives the state machine:
+///        ReadyToLift  ? detects glass lift ? starts timer ? Running
+///        Running      ? detects glass return (sustained weight above threshold) ? Completed
+///
+/// Persistence is handled by the repository; this service only manages in-memory
+/// session state and SignalR real-time events.
 /// </summary>
-public class ChugService
+public class ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> logger)
 {
-    private readonly IHubContext<ChugHub> _hubContext;
-    private readonly ILogger<ChugService> _logger;
-    private readonly CalibrationService _calibrationService;
-    private ChugSessionConfig _config = new();
-
-    // One active session per scale (scale 1, scale 2)
+    private readonly ChugSessionConfig _config = new();
     private readonly ConcurrentDictionary<int, ChugSession> _sessions = new();
-
-    public ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> logger, CalibrationService calibrationService)
-    {
-        _hubContext = hubContext;
-        _logger = logger;
-        _calibrationService = calibrationService;
-    }
 
     /// <summary>Creates a new chug session on the given scale, replacing any existing one.</summary>
     public ChugSession StartSession(int playerId, ChugType chugType, int scaleNumber)
     {
-        // Build thresholds from calibration (glass vs pul)
-        _config = _calibrationService.BuildSessionConfig(chugType);
-
         var session = new ChugSession
         {
             PlayerId = playerId,
@@ -46,7 +36,7 @@ public class ChugService
 
         _sessions[scaleNumber] = session;
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Chug session {SessionId} started: player={PlayerId}, type={ChugType}, scale={Scale}",
             session.SessionId, playerId, chugType, scaleNumber);
 
@@ -64,17 +54,42 @@ public class ChugService
     public void CancelSession(int scaleNumber)
     {
         if (_sessions.TryRemove(scaleNumber, out var session))
-            _logger.LogInformation("Chug session {SessionId} cancelled.", session.SessionId);
+            logger.LogInformation("Chug session {SessionId} cancelled.", session.SessionId);
+    }
+
+    /// <summary>
+    /// Attempts to capture the current stable weight as the session baseline.
+    /// Returns a failure result if there is no active session, if the session
+    /// is not in WaitingForBaseline, or if the weight is not stable enough.
+    /// </summary>
+    public ConfirmBaselineResult ConfirmBaseline(int scaleNumber)
+    {
+        if (!_sessions.TryGetValue(scaleNumber, out var session))
+            return ConfirmBaselineResult.Fail("Geen actieve sessie op deze weegschaal.");
+
+        if (session.State != ChugSessionState.WaitingForBaseline)
+            return ConfirmBaselineResult.Fail($"Sessie is al in staat {session.State}.");
+
+        if (!session.HasEnoughValues)
+            return ConfirmBaselineResult.Fail("Nog niet genoeg metingen.");
+
+        session.CaptureBaseline();
+
+        logger.LogInformation(
+            "Session {Id}: Baseline captured — weight={Weight:F0}",
+            session.SessionId, session.BaselineWeight);
+
+        return ConfirmBaselineResult.Ok(session.BaselineWeight!.Value, session.State.ToString());
     }
 
     /// <summary>
     /// Processes a weight measurement from the serial protocol.
-    /// Only acts on the measurement if there is an active session on the matching scale.
+    /// Always broadcasts the raw value, then drives the state machine
+    /// for any active session on the given scale.
     /// </summary>
     public async Task HandleMeasurementAsync(int scaleNumber, decimal value, CancellationToken ct = default)
     {
-        // Always broadcast the raw value so the calibration wizard can read it
-        await _hubContext.Clients.All.SendAsync("ScaleRaw", new
+        await hubContext.Clients.All.SendAsync("ScaleRaw", new
         {
             scaleNumber,
             value = Math.Round(value, 1),
@@ -83,15 +98,10 @@ public class ChugService
         if (!_sessions.TryGetValue(scaleNumber, out var session))
             return;
 
-        if (session.State is ChugSessionState.Completed or ChugSessionState.Invalid)
+        if (session.State == ChugSessionState.Completed)
             return;
 
-        // Add to rolling average (used for state-machine transitions)
         session.AddValue(value);
-
-        // During validation, also collect readings in the spike-filtered buffer
-        if (session.State == ChugSessionState.Validating)
-            session.AddValidationValue(value);
 
         if (!session.HasEnoughValues)
         {
@@ -99,163 +109,78 @@ public class ChugService
             return;
         }
 
-        var avg = session.CurrentAverage;
-
-        // --- State machine ---
         switch (session.State)
         {
-            // Wait for a full glass on the scale
-            case ChugSessionState.WaitingForFull when avg >= _config.FullThreshold:
-                session.LiftWeight = avg;
-                session.State = ChugSessionState.Ready;
-                _logger.LogInformation("Session {Id}: Full glass detected (avg={Avg:F0})", session.SessionId, avg);
+            // Waiting for player to confirm baseline — no automatic transitions.
+            case ChugSessionState.WaitingForBaseline:
                 break;
 
-            // Glass still sitting on the scale â€” keep tracking the stable weight
-            case ChugSessionState.Ready when avg >= _config.EmptyThreshold:
-                session.LiftWeight = avg;
-                break;
-
-            // Glass lifted off the scale â†’ start timer
-            case ChugSessionState.Ready when avg < _config.EmptyThreshold:
+            // Baseline confirmed — detect glass lift.
+            case ChugSessionState.ReadyToLift when session.IsLifted(_config.LiftDropFactor):
                 session.MarkStarted();
-                _logger.LogInformation("Session {Id}: Glass lifted â€” timer started! (avg={Avg:F0})", session.SessionId, avg);
-                await _hubContext.Clients.All.SendAsync("ChugStarted", new
+                logger.LogInformation(
+                    "Session {Id}: Glass lifted — timer started (avg={Avg:F0}, baseline={Base:F0})",
+                    session.SessionId, session.CurrentAverage, session.BaselineWeight);
+
+                await hubContext.Clients.All.SendAsync("ChugStarted", new
                 {
-                    sessionId = session.SessionId,
+                    sessionId   = session.SessionId,
                     scaleNumber = session.ScaleNumber,
-                    playerId = session.PlayerId,
-                    startTime = session.StartTime,
+                    playerId    = session.PlayerId,
+                    startTime   = session.StartTime,
                 }, ct);
                 break;
 
-            // Glass placed back â€” enter validating state (5-second settle period)
-            case ChugSessionState.Running when avg >= _config.EmptyThreshold:
-            {
-                session.FreezeEndTime(); // freeze the timer now
-                session.State = ChugSessionState.Validating;
-                session.FreezeEndTime(); // freeze the timer now, state stays Validating
-                _logger.LogInformation(
-                    "Session {Id}: Glass placed back â€” entering {Seconds}s validation (avg={Avg:F0})",
-                    session.SessionId, ChugSessionConfig.ValidationDelaySeconds, avg);
-                _ = ValidateAfterDelayAsync(session, ct);
-                break;
-            }
+            // Glass returned — confirm sustained weight above threshold.
+            case ChugSessionState.Running when session.TrackReturn(
+                session.BaselineWeight!.Value * (1 - _config.LiftDropFactor), _config.ReturnConfirmReadings):
 
-            // While validating, keep collecting readings (handled above) but don't transition
-            case ChugSessionState.Validating:
+                session.MarkCompleted();
+                logger.LogInformation(
+                    "Session {Id}: Completed — duration={Duration}ms",
+                    session.SessionId, session.DurationMs);
+
+                await hubContext.Clients.All.SendAsync("ChugCompleted", new
+                {
+                    sessionId   = session.SessionId,
+                    scaleNumber = session.ScaleNumber,
+                    playerId    = session.PlayerId,
+                    durationMs  = session.DurationMs,
+                    startTime   = session.StartTime,
+                    endTime     = session.EndTime,
+                }, ct);
                 break;
         }
 
         await SendUpdateAsync(session, ct);
     }
 
-    /// <summary>
-    /// Waits for the validation settle period, then determines whether the
-    /// player actually drank. Uses a spike-filtered validation buffer so
-    /// the initial impact of placing the glass back does not pollute the result.
-    /// 
-    /// Invalid = the settled weight is still close to the full-glass weight,
-    /// meaning the player put a full glass back without drinking.
-    /// 
-    /// The check uses a relative threshold: if more than 70% of the liquid
-    /// weight is still present, the chug is invalid. This adapts automatically
-    /// to different calibration values and container types.
-    /// </summary>
-    private async Task ValidateAfterDelayAsync(ChugSession session, CancellationToken ct)
-    {
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(ChugSessionConfig.ValidationDelaySeconds), ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        // Use the spike-filtered validation buffer if available, otherwise fall back to rolling average
-        var settledAvg = session.SettledValidationAverage ?? session.CurrentAverage;
-        var liftWeight = session.LiftWeight ?? _config.FullContainerWeight;
-
-        // The weight of the liquid alone = full container âˆ’ empty container.
-        // We use calibration values rather than the live lift weight to avoid
-        // per-session noise affecting the threshold.
-        var liquidWeight = _config.FullContainerWeight - _config.EmptyContainerWeight;
-
-        // Invalid if more than 70% of the liquid is still present.
-        // This gives a very generous margin: even if 30% spills or the scale
-        // drifts, the chug is still accepted. Only a clearly undrunk glass fails.
-        const decimal InvalidFraction = 0.70m;
-        var invalidThreshold = _config.EmptyContainerWeight + (liquidWeight * InvalidFraction);
-
-        var isStillFull = settledAvg > invalidThreshold;
-
-        _logger.LogInformation(
-            "Session {Id}: Validation result â€” settledAvg={Settled:F0}, " +
-            "emptyContainer={Empty:F0}, fullContainer={Full:F0}, " +
-            "liquidWeight={Liquid:F0}, invalidThreshold={Threshold:F0}, " +
-            "liftWeight={Lift:F0}, spikeFiltered={SpikeFiltered}, " +
-            "validationReadings={Readings}, verdict={Verdict}",
-            session.SessionId, settledAvg,
-            _config.EmptyContainerWeight, _config.FullContainerWeight,
-            liquidWeight, invalidThreshold,
-            liftWeight, session.SettledValidationAverage.HasValue,
-            session.ValidationReadingCount,
-            isStillFull ? "INVALID" : "COMPLETED");
-
-        if (isStillFull)
-        {
-            session.MarkInvalid();
-            _logger.LogWarning(
-                "Session {Id}: INVALID â€” glass still full. " +
-                "Settled avg {Settled:F0} > threshold {Threshold:F0} " +
-                "(>{Pct}% of liquid still present)",
-                session.SessionId, settledAvg, invalidThreshold, InvalidFraction * 100);
-
-            await _hubContext.Clients.All.SendAsync("ChugInvalid", new
-            {
-                sessionId = session.SessionId,
-                scaleNumber = session.ScaleNumber,
-                playerId = session.PlayerId,
-            }, ct);
-        }
-        else
-        {
-            session.State = ChugSessionState.Completed;
-            _logger.LogInformation(
-                "Session {Id}: COMPLETED â€” Duration={Duration}ms. " +
-                "Settled avg {Settled:F0} <= threshold {Threshold:F0}",
-                session.SessionId, session.DurationMs, settledAvg, invalidThreshold);
-
-            await _hubContext.Clients.All.SendAsync("ChugCompleted", new
-            {
-                sessionId = session.SessionId,
-                scaleNumber = session.ScaleNumber,
-                playerId = session.PlayerId,
-                durationMs = session.DurationMs,
-                startTime = session.StartTime,
-                endTime = session.EndTime,
-            }, ct);
-        }
-
-        await SendUpdateAsync(session, ct);
-    }
-
-    /// <summary>Pushes a state/weight snapshot to all connected SignalR clients.</summary>
     private async Task SendUpdateAsync(ChugSession session, CancellationToken ct)
     {
-        await _hubContext.Clients.All.SendAsync("ChugUpdate", new
+        await hubContext.Clients.All.SendAsync("ChugUpdate", new
         {
-            sessionId = session.SessionId,
-            scaleNumber = session.ScaleNumber,
-            playerId = session.PlayerId,
-            state = session.State.ToString(),
-            currentAverage = Math.Round(session.CurrentAverage, 1),
-            elapsedMs = session.ElapsedMs,
-            isReady = session.State == ChugSessionState.Ready,
-            isRunning = session.State == ChugSessionState.Running,
-            isCompleted = session.State == ChugSessionState.Completed,
-            durationMs = session.DurationMs,
+            sessionId              = session.SessionId,
+            scaleNumber            = session.ScaleNumber,
+            playerId               = session.PlayerId,
+            state                  = session.State.ToString(),
+            currentAverage         = Math.Round(session.CurrentAverage, 1),
+            baselineWeight         = session.BaselineWeight,
+            elapsedMs              = session.ElapsedMs,
+            isWaitingForBaseline   = session.State == ChugSessionState.WaitingForBaseline,
+            isReadyToLift          = session.State == ChugSessionState.ReadyToLift,
+            isRunning              = session.State == ChugSessionState.Running,
+            isCompleted            = session.State == ChugSessionState.Completed,
+            durationMs             = session.DurationMs,
         }, ct);
     }
+}
+
+/// <summary>Result of a <see cref="ChugService.ConfirmBaseline"/> call.</summary>
+public record ConfirmBaselineResult(bool Success, string? Message, decimal? BaselineWeight, string State)
+{
+    public static ConfirmBaselineResult Fail(string message)
+        => new(false, message, null, ChugSessionState.WaitingForBaseline.ToString());
+
+    public static ConfirmBaselineResult Ok(decimal baselineWeight, string state)
+        => new(true, null, baselineWeight, state);
 }

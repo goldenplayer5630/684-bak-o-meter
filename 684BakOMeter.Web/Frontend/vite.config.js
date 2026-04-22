@@ -19,7 +19,6 @@ export default defineConfig({
                 'manager-main':            resolve(__dirname, 'src/manager-main.js'),
                 'hidden-menu-main':        resolve(__dirname, 'src/hidden-menu-main.js'),
                 'hidden-leaderboards-main': resolve(__dirname, 'src/hidden-leaderboards-main.js'),
-                'config-main':              resolve(__dirname, 'src/config-main.js'),
             },
             output: {
                 entryFileNames: '[name].js',

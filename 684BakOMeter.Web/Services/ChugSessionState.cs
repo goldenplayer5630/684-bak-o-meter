@@ -1,23 +1,17 @@
 namespace _684BakOMeter.Web.Services;
 
-/// <summary>State machine states for a chug session driven by scale measurements.</summary>
+/// <summary>State machine states for a manual-baseline chug session.</summary>
 public enum ChugSessionState
 {
-    /// <summary>Waiting for the full glass to be placed on the scale.</summary>
-    WaitingForFull,
+    /// <summary>Waiting for the player to place a full glass and confirm with SPACE.</summary>
+    WaitingForBaseline,
 
-    /// <summary>Full glass detected — ready for the player to lift it.</summary>
-    Ready,
+    /// <summary>Baseline weight captured — waiting for the player to lift the glass.</summary>
+    ReadyToLift,
 
     /// <summary>Glass lifted — timer is running.</summary>
     Running,
 
-    /// <summary>Glass placed back — validating the chug (3-second settle period).</summary>
-    Validating,
-
-    /// <summary>Empty glass placed back — chug completed.</summary>
+    /// <summary>Glass returned and confirmed — chug completed.</summary>
     Completed,
-
-    /// <summary>Full glass placed back without drinking — invalid attempt.</summary>
-    Invalid
 }
