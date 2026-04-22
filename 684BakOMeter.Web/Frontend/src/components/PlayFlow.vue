@@ -70,12 +70,9 @@
              player places full glass and presses SPACE to lock in the start weight -->
         <template v-if="step === 'chug' && chugPhase === 'baseline'">
             <h1 class="arcade-title arcade-title--small">{{ baselineScaleLabel }}</h1>
-            <div class="arcade-subtitle mt-2">Zet een volle bak op de weegschaal</div>
-            <div class="arcade-subtitle mt-2">Druk SPATIE om te bevestigen</div>
+            <div class="arcade-subtitle mt-2">Plaats een volle bak</div>
+            <div class="arcade-subtitle mt-2">Druk SPATIE om verder te gaan</div>
 
-            <div class="baseline-weight mt-3" :class="{ stable: baselineIsStable }">
-                {{ formatRawWeight(currentBaselineAvg) }}
-            </div>
             <div v-if="baselineError" class="baseline-error mt-2 arcade-blink">{{ baselineError }}</div>
         </template>
 
@@ -162,8 +159,10 @@
                 <div class="result-countdown">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
             </div>
         </template>
-    </div>
-</template>
+                    <!-- DEBUG: live scale readings -->
+                    <div class="debug-overlay">{{ rawScale1 }}</div>
+                </div>
+            </template>
 
 <script setup>
 import { ref, computed, onUnmounted } from 'vue';
@@ -200,6 +199,8 @@ let player2Id = null;
 // --- Scale state (driven by SignalR) ---
 const scale1State  = computed(() => chugHub.scale1.value);
 const scale2State  = computed(() => chugHub.scale2.value);
+const rawScale1    = computed(() => chugHub.rawScale1.value);
+const rawScale2    = computed(() => chugHub.rawScale2.value);
 const chugElapsed1 = computed(() => chugHub.elapsed1.value);
 const chugElapsed2 = computed(() => chugHub.elapsed2.value);
 
@@ -232,18 +233,8 @@ let baselineConfirming = false;
 
 const baselineScaleLabel = computed(() =>
     isMultiplayer.value
-        ? `SPELER ${baselineScale.value} — WEEGSCHAAL ${baselineScale.value}`
-        : 'WEEGSCHAAL KLAARZETTEN');
-
-const currentBaselineAvg = computed(() =>
-    baselineScale.value === 1 ? scale1State.value.currentAverage : scale2State.value.currentAverage);
-
-const baselineIsStable = computed(() => currentBaselineAvg.value > 40_000);
-
-function formatRawWeight(raw) {
-    if (!raw || raw < 1000) return '---';
-    return Math.round(raw).toLocaleString();
-}
+        ? `SPELER ${baselineScale.value} — ${baselineScale.value}`
+        : 'BAK KLAARZETTEN');
 
 // Result-screen elapsed values (frozen on completion)
 const elapsed1 = ref(0);
@@ -272,7 +263,6 @@ const isOverallBest1  = computed(() => isNewBest1.value && rank1.value === 1);
 const isOverallBest2  = computed(() => isNewBest2.value && rank2.value === 1);
 const winnerOverallBest = computed(() => elapsed1.value <= elapsed2.value ? isOverallBest1.value : isOverallBest2.value);
 const loserOverallBest  = computed(() => elapsed1.value <= elapsed2.value ? isOverallBest2.value : isOverallBest1.value);
-const overallBestTime = ref(null);
 
 function formatTime(ms) {
     const sec  = Math.floor(ms / 1000);
@@ -460,25 +450,6 @@ async function saveAndShowResult() {
         }
     } catch (err) { console.error('Save failed:', err); }
 
-    // Determine overall bests for result screen
-    try {
-        const res = await fetch('/api/play/get-overall-bests', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chugType: props.chugTypeSlug }),
-        });
-        const data = await res.json();
-        if (data.playerId === player1Id) {
-            isOverallBest1.value = true;
-            overallBestTime.value = data.bestTime;
-        } else if (data.playerId === player2Id) {
-            isOverallBest2.value = true;
-            overallBestTime.value = data.bestTime;
-        }
-    } catch (err) {
-        console.error('Fetch overall bests failed:', err);
-    }
-
     spawnConfetti(isOverallBest1.value || isOverallBest2.value);
     step.value = 'result';
     resultCountdown.value = 5;
@@ -566,5 +537,15 @@ onUnmounted(() => {
     font-size: 0.6rem;
     color: #ff4081;
     letter-spacing: 1px;
+}
+.debug-overlay {
+    position: fixed;
+    bottom: 0.4rem;
+    right: 0.4rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.4);
+    pointer-events: none;
+    z-index: 9999;
 }
 </style>

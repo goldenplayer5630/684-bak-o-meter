@@ -61,21 +61,7 @@ public class ChugSession
     }
 
     /// <summary>
-    /// Returns true when the rolling window is full, the average exceeds
-    /// <paramref name="minWeight"/>, and all values in the window are within
-    /// <paramref name="maxDeviation"/> of each other.
-    /// </summary>
-    public bool IsStableForBaseline(decimal maxDeviation, decimal minWeight)
-    {
-        if (!HasEnoughValues) return false;
-        if (CurrentAverage < minWeight) return false;
-        var values = _recentValues.ToList();
-        return values.Max() - values.Min() <= maxDeviation;
-    }
-
-    /// <summary>
     /// Captures the current average as the session baseline and transitions to ReadyToLift.
-    /// Call only after <see cref="IsStableForBaseline"/> returns true.
     /// </summary>
     public void CaptureBaseline()
     {
@@ -85,11 +71,11 @@ public class ChugSession
     }
 
     /// <summary>
-    /// Returns true when the smoothed weight has dropped far enough below the
-    /// baseline to confirm the glass was lifted.
+    /// Returns true when the smoothed weight has dropped below
+    /// <paramref name="liftDropFactor"/> × baseline (e.g. 0.5 = below 50 % of baseline).
     /// </summary>
-    public bool IsLifted(decimal liftDropThreshold)
-        => BaselineWeight.HasValue && CurrentAverage < BaselineWeight.Value - liftDropThreshold;
+    public bool IsLifted(decimal liftDropFactor)
+        => BaselineWeight.HasValue && CurrentAverage < BaselineWeight.Value * (1 - liftDropFactor);
 
     /// <summary>Starts the timer and transitions to Running.</summary>
     public void MarkStarted()
@@ -100,12 +86,9 @@ public class ChugSession
     }
 
     /// <summary>
-    /// Accumulates return-confirmation readings and returns true once the glass
-    /// is confirmed back on the scale. Must be called on every measurement while Running.
-    ///
-    /// Strategy: count consecutive readings at or above <paramref name="confirmMinWeight"/>.
-    /// The weight was near zero while lifted, so a sustained rise above the minimum
-    /// naturally captures the return kick and its follow-through in a single mechanism.
+    /// Returns true when the weight has been at or above <paramref name="confirmMinWeight"/>
+    /// for <paramref name="confirmReadings"/> consecutive readings.
+    /// Resets the counter the moment weight drops below the threshold.
     /// </summary>
     public bool TrackReturn(decimal confirmMinWeight, int confirmReadings)
     {

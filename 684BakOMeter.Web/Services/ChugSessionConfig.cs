@@ -8,31 +8,14 @@ namespace _684BakOMeter.Web.Services;
 public class ChugSessionConfig
 {
     /// <summary>
-    /// Max allowed spread (max − min) across the rolling window for the
-    /// baseline to be considered stable enough to capture.
+    /// Fraction of the captured baseline weight the smoothed reading must drop
+    /// below before a lift is confirmed. E.g. 0.5 means the weight must fall
+    /// below 50 % of the baseline. Applies symmetrically to return detection.
     /// </summary>
-    public decimal BaselineMaxDeviation { get; init; } = 800m;
+    public decimal LiftDropFactor { get; init; } = 0.5m;
 
     /// <summary>
-    /// Minimum raw weight required when confirming the baseline.
-    /// Prevents accepting a near-empty scale as a valid baseline.
-    /// </summary>
-    public decimal BaselineMinWeight { get; init; } = 40_000m;
-
-    /// <summary>
-    /// How far below the captured baseline the smoothed weight must drop
-    /// before a glass lift is confirmed.
-    /// </summary>
-    public decimal LiftDropThreshold { get; init; } = 10_000m;
-
-    /// <summary>
-    /// Smoothed weight must exceed this value for each reading that counts
-    /// toward return confirmation. Must be well above the bare-scale reading.
-    /// </summary>
-    public decimal ReturnConfirmMinWeight { get; init; } = 40_000m;
-
-    /// <summary>
-    /// Number of consecutive readings above <see cref="ReturnConfirmMinWeight"/>
+    /// Number of consecutive readings above the return threshold
     /// required to confirm the glass has been returned and complete the chug.
     /// </summary>
     public int ReturnConfirmReadings { get; init; } = 3;

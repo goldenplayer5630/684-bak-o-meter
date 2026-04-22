@@ -23,6 +23,8 @@ export function useChugHub() {
 
     const scale1 = ref(initialScale());
     const scale2 = ref(initialScale());
+    const rawScale1 = ref(0);
+    const rawScale2 = ref(0);
 
     // Local timer interpolation for smooth display while Running
     let localTimer1 = null;
@@ -80,6 +82,11 @@ export function useChugHub() {
             s.value = data;
         });
 
+        connection.on('ScaleRaw', (data) => {
+            if (data.scaleNumber === 1) rawScale1.value = data.value;
+            else rawScale2.value = data.value;
+        });
+
         connection.on('ChugStarted', (data) => {
             startLocalTimer(data.scaleNumber);
         });
@@ -117,6 +124,8 @@ export function useChugHub() {
     return {
         scale1: readonly(scale1),
         scale2: readonly(scale2),
+        rawScale1,
+        rawScale2,
         elapsed1,
         elapsed2,
         connect,

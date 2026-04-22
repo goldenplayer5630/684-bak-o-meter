@@ -71,10 +71,7 @@ public class ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> l
             return ConfirmBaselineResult.Fail($"Sessie is al in staat {session.State}.");
 
         if (!session.HasEnoughValues)
-            return ConfirmBaselineResult.Fail("Nog niet genoeg metingen. Houd het glas stil.");
-
-        if (!session.IsStableForBaseline(_config.BaselineMaxDeviation, _config.BaselineMinWeight))
-            return ConfirmBaselineResult.Fail("Gewicht is niet stabiel. Houd het glas stil.");
+            return ConfirmBaselineResult.Fail("Nog niet genoeg metingen.");
 
         session.CaptureBaseline();
 
@@ -119,7 +116,7 @@ public class ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> l
                 break;
 
             // Baseline confirmed — detect glass lift.
-            case ChugSessionState.ReadyToLift when session.IsLifted(_config.LiftDropThreshold):
+            case ChugSessionState.ReadyToLift when session.IsLifted(_config.LiftDropFactor):
                 session.MarkStarted();
                 logger.LogInformation(
                     "Session {Id}: Glass lifted — timer started (avg={Avg:F0}, baseline={Base:F0})",
@@ -134,9 +131,9 @@ public class ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> l
                 }, ct);
                 break;
 
-            // Glass lifted — detect return by tracking sustained weight above threshold.
+            // Glass returned — confirm sustained weight above threshold.
             case ChugSessionState.Running when session.TrackReturn(
-                _config.ReturnConfirmMinWeight, _config.ReturnConfirmReadings):
+                session.BaselineWeight!.Value * (1 - _config.LiftDropFactor), _config.ReturnConfirmReadings):
 
                 session.MarkCompleted();
                 logger.LogInformation(
