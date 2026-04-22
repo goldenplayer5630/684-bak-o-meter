@@ -9,10 +9,11 @@ public class ChugSessionConfig
 {
     /// <summary>
     /// Fraction of the captured baseline weight the smoothed reading must drop
-    /// below before a lift is confirmed. E.g. 0.5 means the weight must fall
-    /// below 50 % of the baseline. Applies symmetrically to return detection.
+    /// below before a lift is confirmed. E.g. 0.2 means the weight must fall
+    /// below 80 % of the baseline (drop by at least 20%). Applies symmetrically to return detection.
+    /// Tuned for scale readings in the hundreds range.
     /// </summary>
-    public decimal LiftDropFactor { get; init; } = 0.5m;
+    public decimal LiftDropFactor { get; init; } = 0.1m;
 
     /// <summary>
     /// Number of consecutive readings above the return threshold
