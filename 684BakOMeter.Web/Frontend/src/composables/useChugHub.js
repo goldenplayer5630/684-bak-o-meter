@@ -2,12 +2,27 @@ import { ref, readonly } from 'vue';
 import * as signalR from '@microsoft/signalr';
 
 /**
- * Composable that connects to the ChugHub SignalR endpoint
- * and exposes reactive state for scale 1 and scale 2 chug sessions.
+ * Composable that connects to the ChugHub SignalR endpoint and exposes reactive
+ * state for scale 1 and scale 2 chug sessions.
+ *
+ * State machine mirrored from the backend:
+ *   WaitingForBaseline → ReadyToLift → Running → Completed
  */
 export function useChugHub() {
-    const scale1 = ref({ state: 'WaitingForFull', currentAverage: 0, elapsedMs: 0, durationMs: null });
-    const scale2 = ref({ state: 'WaitingForFull', currentAverage: 0, elapsedMs: 0, durationMs: null });
+    const initialScale = () => ({
+        state: 'WaitingForBaseline',
+        currentAverage: 0,
+        baselineWeight: null,
+        elapsedMs: 0,
+        durationMs: null,
+        isWaitingForBaseline: true,
+        isReadyToLift: false,
+        isRunning: false,
+        isCompleted: false,
+    });
+
+    const scale1 = ref(initialScale());
+    const scale2 = ref(initialScale());
 
     // Local timer interpolation for smooth display while Running
     let localTimer1 = null;
@@ -19,7 +34,6 @@ export function useChugHub() {
 
     let connection = null;
     let onCompleteFn = null;
-    let onInvalidFn = null;
 
     function getScaleRef(scaleNumber) {
         return scaleNumber === 1 ? scale1 : scale2;
@@ -53,9 +67,8 @@ export function useChugHub() {
         }
     }
 
-    async function connect(onComplete, onInvalid) {
+    async function connect(onComplete) {
         onCompleteFn = onComplete;
-        onInvalidFn = onInvalid ?? null;
 
         connection = new signalR.HubConnectionBuilder()
             .withUrl('/hubs/chug')
@@ -65,29 +78,15 @@ export function useChugHub() {
         connection.on('ChugUpdate', (data) => {
             const s = getScaleRef(data.scaleNumber);
             s.value = data;
-
-            // Freeze the local timer as soon as the glass is placed back (validating)
-            if (data.state === 'Validating' && data.durationMs != null) {
-                stopLocalTimer(data.scaleNumber, data.durationMs);
-            }
         });
 
         connection.on('ChugStarted', (data) => {
             startLocalTimer(data.scaleNumber);
         });
 
-        connection.on('ChugTimerStop', (data) => {
-            stopLocalTimer(data.scaleNumber, data.durationMs);
-        });
-
         connection.on('ChugCompleted', (data) => {
             stopLocalTimer(data.scaleNumber, data.durationMs);
             if (onCompleteFn) onCompleteFn(data);
-        });
-
-        connection.on('ChugInvalid', (data) => {
-            stopLocalTimer(data.scaleNumber, 0);
-            if (onInvalidFn) onInvalidFn(data);
         });
 
         await connection.start();
@@ -105,8 +104,8 @@ export function useChugHub() {
     }
 
     function reset() {
-        scale1.value = { state: 'WaitingForFull', currentAverage: 0, elapsedMs: 0, durationMs: null };
-        scale2.value = { state: 'WaitingForFull', currentAverage: 0, elapsedMs: 0, durationMs: null };
+        scale1.value = initialScale();
+        scale2.value = initialScale();
         elapsed1.value = 0;
         elapsed2.value = 0;
         clearInterval(localTimer1);
@@ -125,3 +124,4 @@ export function useChugHub() {
         reset,
     };
 }
+

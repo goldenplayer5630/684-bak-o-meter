@@ -66,19 +66,31 @@
                                @cancel="step = 'nfc-scan-p2'" />
         </template>
 
-        <!-- STEP 3: Chug Timer -->
-        <template v-if="step === 'chug'">
+        <!-- STEP 3: Baseline confirmation —
+             player places full glass and presses SPACE to lock in the start weight -->
+        <template v-if="step === 'chug' && chugPhase === 'baseline'">
+            <h1 class="arcade-title arcade-title--small">{{ baselineScaleLabel }}</h1>
+            <div class="arcade-subtitle mt-2">Zet een volle bak op de weegschaal</div>
+            <div class="arcade-subtitle mt-2">Druk SPATIE om te bevestigen</div>
+
+            <div class="baseline-weight mt-3" :class="{ stable: baselineIsStable }">
+                {{ formatRawWeight(currentBaselineAvg) }}
+            </div>
+            <div v-if="baselineError" class="baseline-error mt-2 arcade-blink">{{ baselineError }}</div>
+        </template>
+
+        <!-- STEP 3: Chug Timer — after baseline confirmed, waiting to lift or running -->
+        <template v-if="step === 'chug' && chugPhase === 'timer'">
             <h1 class="arcade-title arcade-title--small">{{ chugTypeLabel }}</h1>
 
             <!-- Singleplayer -->
             <template v-if="!isMultiplayer">
                 <div class="result-player mt-2">{{ playerName1 }}</div>
                 <TimerDisplay :elapsed="chugElapsed1" :state="timer1State" />
-                <div v-if="scale1State.state !== 'Completed'" class="arcade-prompt mt-3" :class="{ 'arcade-blink': scale1State.state !== 'Running' && scale1State.state !== 'Validating' }">
-                    <span v-if="scale1State.state === 'WaitingForFull'">PLAATS EEN VOLLE BAK</span>
-                    <span v-if="scale1State.state === 'Ready'">TREK EEN BAK!</span>
+                <div v-if="scale1State.state !== 'Completed'" class="arcade-prompt mt-3"
+                     :class="{ 'arcade-blink': scale1State.state === 'ReadyToLift' }">
+                    <span v-if="scale1State.state === 'ReadyToLift'">TREK EEN BAK!</span>
                     <span v-if="scale1State.state === 'Running'">ZUIPEN MET JE DONDER!</span>
-                    <span v-if="scale1State.state === 'Validating'">VALIDEREN... (LAAT GLAS LOS!!!)</span>
                 </div>
             </template>
 
@@ -95,11 +107,10 @@
                         <TimerDisplay :elapsed="chugElapsed2" :state="timer2State" />
                     </div>
                 </div>
-                <div v-if="!bothCompleted" class="arcade-prompt mt-3" :class="{ 'arcade-blink': !anyRunning }">
-                    <span v-if="bothWaiting">PLAATS JULLIE VOLLE BAKKEN</span>
-                    <span v-if="bothReady">TREK EEN BAK!</span>
+                <div v-if="!bothCompleted" class="arcade-prompt mt-3"
+                     :class="{ 'arcade-blink': !anyRunning }">
+                    <span v-if="anyReadyToLift && !anyRunning">TREK EEN BAK!</span>
                     <span v-if="anyRunning">ZUIPEN MET JE DONDER!</span>
-                    <span v-if="anyValidating">VALIDEREN...</span>
                 </div>
             </template>
         </template>
@@ -151,15 +162,6 @@
                 <div class="result-countdown">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
             </div>
         </template>
-
-        <!-- STEP: Invalid (full glass placed back) -->
-        <template v-if="step === 'invalid'">
-            <div class="result-screen">
-                <div class="result-title arcade-blink" style="color: #ff4081;">ONGELDIG!</div>
-                <div class="arcade-prompt mt-3">LAFFE BORRELAAR!</div>
-                <div class="result-countdown mt-3">TERUG NAAR MENU IN {{ resultCountdown }}...</div>
-            </div>
-        </template>
     </div>
 </template>
 
@@ -175,15 +177,16 @@ import { useBgMusic } from '../composables/useBgMusic.js';
 useBgMusic('/music/battle.mp3');
 
 const props = defineProps({
-    chugTypeSlug: { type: String, default: 'Bak' },
+    chugTypeSlug:  { type: String, default: 'Bak' },
     chugTypeLabel: { type: String, default: 'Bak' },
 });
 
 const chugHub = useChugHub();
 
 // --- Flow ---
-const step = ref('mode');
-const modeIndex = ref(0);
+const step          = ref('mode');     // mode | nfc-scan | create-user | nfc-scan-p2 | create-user-p2 | chug | result
+const chugPhase     = ref('baseline'); // baseline | timer  (sub-phase within 'chug')
+const modeIndex     = ref(0);
 const isMultiplayer = ref(false);
 
 const pendingTagUid = ref('');
@@ -195,31 +198,52 @@ let player1Id = null;
 let player2Id = null;
 
 // --- Scale state (driven by SignalR) ---
-const scale1State = computed(() => chugHub.scale1.value);
-const scale2State = computed(() => chugHub.scale2.value);
+const scale1State  = computed(() => chugHub.scale1.value);
+const scale2State  = computed(() => chugHub.scale2.value);
 const chugElapsed1 = computed(() => chugHub.elapsed1.value);
 const chugElapsed2 = computed(() => chugHub.elapsed2.value);
 
 // Map scale states to TimerDisplay state prop
 const timer1State = computed(() => {
     const s = scale1State.value.state;
-    if (s === 'Running') return 'running';
-    if (s === 'Completed' || s === 'Validating') return 'stopped';
+    if (s === 'Running')   return 'running';
+    if (s === 'Completed') return 'stopped';
     return 'idle';
 });
 const timer2State = computed(() => {
     const s = scale2State.value.state;
-    if (s === 'Running') return 'running';
-    if (s === 'Completed' || s === 'Validating') return 'stopped';
+    if (s === 'Running')   return 'running';
+    if (s === 'Completed') return 'stopped';
     return 'idle';
 });
 
 // Multiplayer prompt helpers
-const bothWaiting = computed(() => scale1State.value.state === 'WaitingForFull' || scale2State.value.state === 'WaitingForFull');
-const bothReady = computed(() => scale1State.value.state === 'Ready' && scale2State.value.state === 'Ready');
-const anyRunning = computed(() => scale1State.value.state === 'Running' || scale2State.value.state === 'Running');
-const anyValidating = computed(() => (scale1State.value.state === 'Validating' || scale2State.value.state === 'Validating') && !anyRunning.value);
-const bothCompleted = computed(() => scale1State.value.state === 'Completed' && scale2State.value.state === 'Completed');
+const anyReadyToLift = computed(() =>
+    scale1State.value.state === 'ReadyToLift' || scale2State.value.state === 'ReadyToLift');
+const anyRunning    = computed(() =>
+    scale1State.value.state === 'Running'     || scale2State.value.state === 'Running');
+const bothCompleted = computed(() =>
+    scale1State.value.state === 'Completed'   && scale2State.value.state === 'Completed');
+
+// --- Baseline step state ---
+const baselineScale = ref(1);
+const baselineError = ref('');
+let baselineConfirming = false;
+
+const baselineScaleLabel = computed(() =>
+    isMultiplayer.value
+        ? `SPELER ${baselineScale.value} — WEEGSCHAAL ${baselineScale.value}`
+        : 'WEEGSCHAAL KLAARZETTEN');
+
+const currentBaselineAvg = computed(() =>
+    baselineScale.value === 1 ? scale1State.value.currentAverage : scale2State.value.currentAverage);
+
+const baselineIsStable = computed(() => currentBaselineAvg.value > 40_000);
+
+function formatRawWeight(raw) {
+    if (!raw || raw < 1000) return '---';
+    return Math.round(raw).toLocaleString();
+}
 
 // Result-screen elapsed values (frozen on completion)
 const elapsed1 = ref(0);
@@ -343,11 +367,9 @@ async function startChug() {
     elapsed1.value = 0;
     elapsed2.value = 0;
     completedScales = 0;
-    step.value = 'chug';
 
-    await chugHub.connect(onChugCompleted, onChugInvalid);
+    await chugHub.connect(onChugCompleted);
 
-    // Start session(s) on the backend
     await fetch('/api/chug/start-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -361,6 +383,44 @@ async function startChug() {
             body: JSON.stringify({ playerId: player2Id, chugType: props.chugTypeSlug, scaleNumber: 2 }),
         });
     }
+
+    // Show baseline confirmation for scale 1 first
+    baselineScale.value = 1;
+    baselineError.value = '';
+    baselineConfirming = false;
+    chugPhase.value = 'baseline';
+    step.value = 'chug';
+}
+
+/// Handles SPACE press during the baseline phase.
+async function confirmBaseline() {
+    if (baselineConfirming) return;
+    baselineConfirming = true;
+    baselineError.value = '';
+
+    try {
+        const r = await fetch(`/api/chug/confirm-baseline/${baselineScale.value}`, { method: 'POST' });
+        const d = await r.json();
+
+        if (!d.success) {
+            baselineError.value = d.message ?? 'Gewicht niet stabiel.';
+            return;
+        }
+
+        // Baseline confirmed for current scale
+        if (isMultiplayer.value && baselineScale.value === 1) {
+            // Move on to scale 2 baseline
+            baselineScale.value = 2;
+            baselineError.value = '';
+        } else {
+            // All baselines confirmed — show the timer screen
+            chugPhase.value = 'timer';
+        }
+    } catch {
+        baselineError.value = 'Kon verbinding niet maken.';
+    } finally {
+        baselineConfirming = false;
+    }
 }
 
 function onChugCompleted(data) {
@@ -373,16 +433,6 @@ function onChugCompleted(data) {
         completedScales++;
         if (completedScales >= 2) saveAndShowResult();
     }
-}
-
-function onChugInvalid(data) {
-    // Don't save — just show the shame message and go back to menu
-    step.value = 'invalid';
-    resultCountdown.value = 5;
-    resultInterval = setInterval(() => {
-        resultCountdown.value--;
-        if (resultCountdown.value <= 0) { clearInterval(resultInterval); window.location.href = '/'; }
-    }, 1000);
 }
 
 function goBack() { window.location.href = '/'; }
@@ -458,13 +508,17 @@ function spawnConfetti(overall = false) {
 
 // --- Keyboard ---
 useKeyController({
-    onEscape: () => { if (step.value === 'mode') goBack(); },
-    onUp: () => { if (step.value === 'mode') modeIndex.value = Math.max(0, modeIndex.value - 1); },
-    onDown: () => { if (step.value === 'mode') modeIndex.value = Math.min(2, modeIndex.value + 1); },
+    onEscape:  () => { if (step.value === 'mode') goBack(); },
+    onUp:      () => { if (step.value === 'mode') modeIndex.value = Math.max(0, modeIndex.value - 1); },
+    onDown:    () => { if (step.value === 'mode') modeIndex.value = Math.min(2, modeIndex.value + 1); },
     onActivate: () => {
         if (step.value === 'mode') {
             if (modeIndex.value === 2) goBack();
             else selectMode(modeIndex.value);
+            return;
+        }
+        if (step.value === 'chug' && chugPhase.value === 'baseline') {
+            confirmBaseline();
         }
     },
 });
@@ -494,5 +548,23 @@ onUnmounted(() => {
     font-size: 0.9rem;
     color: var(--text-muted);
     flex-shrink: 0;
+}
+
+.baseline-weight {
+    font-family: var(--font-arcade);
+    font-size: 1.6rem;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    transition: color 0.3s;
+}
+.baseline-weight.stable {
+    color: var(--accent-green);
+    text-shadow: var(--glow-green);
+}
+.baseline-error {
+    font-family: var(--font-arcade);
+    font-size: 0.6rem;
+    color: #ff4081;
+    letter-spacing: 1px;
 }
 </style>

@@ -1,35 +1,39 @@
 namespace _684BakOMeter.Web.Services;
 
 /// <summary>
-/// Scale thresholds used by the chug detection state machine.
-/// Values are raw decimal readings from the scale sensor (not grams).
-/// 
-/// No glass  : below <see cref="EmptyThreshold"/>
-/// Empty glass: between <see cref="EmptyThreshold"/> and <see cref="FullThreshold"/>
-/// Full glass : above <see cref="FullThreshold"/>
+/// Detection thresholds for the manual-baseline chug flow.
+/// All values are raw decimal readings from the scale sensor (not grams).
+/// Defaults are tuned for the 684 Bak-O-Meter load cell setup.
 /// </summary>
 public class ChugSessionConfig
 {
-    /// <summary>Above this value an empty glass is on the scale.</summary>
-    public decimal EmptyThreshold { get; init; } = 50_000m;
-
-    /// <summary>Above this value the glass is considered full.</summary>
-    public decimal FullThreshold { get; init; } = 70_000m;
+    /// <summary>
+    /// Max allowed spread (max − min) across the rolling window for the
+    /// baseline to be considered stable enough to capture.
+    /// </summary>
+    public decimal BaselineMaxDeviation { get; init; } = 800m;
 
     /// <summary>
-    /// The calibrated weight of the empty container (glass or pul).
-    /// Used to determine if a returned glass was drunk: the settled weight
-    /// after return must be below this value plus a tolerance margin.
+    /// Minimum raw weight required when confirming the baseline.
+    /// Prevents accepting a near-empty scale as a valid baseline.
     /// </summary>
-    public decimal EmptyContainerWeight { get; init; } = 67_000m;
+    public decimal BaselineMinWeight { get; init; } = 40_000m;
 
     /// <summary>
-    /// The calibrated weight of the full container.
-    /// Used together with <see cref="EmptyContainerWeight"/> to compute
-    /// relative tolerance margins for the invalid check.
+    /// How far below the captured baseline the smoothed weight must drop
+    /// before a glass lift is confirmed.
     /// </summary>
-    public decimal FullContainerWeight { get; init; } = 82_000m;
+    public decimal LiftDropThreshold { get; init; } = 10_000m;
 
-    /// <summary>Seconds to wait during validation for the sensor to settle.</summary>
-    public const int ValidationDelaySeconds = 5;
+    /// <summary>
+    /// Smoothed weight must exceed this value for each reading that counts
+    /// toward return confirmation. Must be well above the bare-scale reading.
+    /// </summary>
+    public decimal ReturnConfirmMinWeight { get; init; } = 40_000m;
+
+    /// <summary>
+    /// Number of consecutive readings above <see cref="ReturnConfirmMinWeight"/>
+    /// required to confirm the glass has been returned and complete the chug.
+    /// </summary>
+    public int ReturnConfirmReadings { get; init; } = 3;
 }
