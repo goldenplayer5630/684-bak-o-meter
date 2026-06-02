@@ -60,11 +60,9 @@ public class ChugSessionTests
         var session = CreateSession();
         session.AddValue(100m);
         session.AddValue(200m);
-        session.AddValue(300m);
-        session.AddValue(400m);
-        session.AddValue(500m); // window=4, so 100 is dropped
+        session.AddValue(300m); // window=2, so 100 and 200 are dropped
 
-        Assert.Equal(350m, session.CurrentAverage); // avg(200,300,400,500)
+        Assert.Equal(250m, session.CurrentAverage); // avg(200,300)
     }
 
     [Fact]
@@ -72,8 +70,6 @@ public class ChugSessionTests
     {
         var session = CreateSession();
         session.AddValue(100m);
-        session.AddValue(200m);
-        session.AddValue(300m);
         Assert.False(session.HasEnoughValues);
     }
 

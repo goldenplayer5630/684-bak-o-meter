@@ -1,12 +1,23 @@
-import { ref } from 'vue';
+﻿import { ref, watch } from 'vue';
+import { ApplicationModes, useAppMode } from './useAppMode.js';
 
-const STORAGE_DIABOLO    = 'diabolo';
-const STORAGE_LION       = 'lionmode';
-const STORAGE_DEMOS      = 'demosmode';
-const STORAGE_DYSIS      = 'dysismode';
-const STORAGE_KWAAK      = 'kwaakmode';
-const STORAGE_KOMPAS     = 'kompasmode';
-const STORAGE_KLOOTVIOOL = 'klootvioolmode';
+/**
+ * Composable for secret easter egg background modes.
+ *
+ * Key sequences:
+ *   666        => Diabolo  (black + red corner + geheim-logo)
+ *   klc        => Lion     (deep red + white leeuwgod watermark)
+ *   dms        => Dms      (unofficial play: typed name instead of NFC)
+ *   427        => Dysis    (dysis.jpg background)
+ *   kwaak      => Kwaak    (kwaak.jpg background)
+ *   kompas     => Kompas   (kompas.jpg background)
+ *   klootviool => Klootviool (klootviool.png background)
+ *
+ * Modes are mutually exclusive; re-entering the active code reverts to Official.
+ * On startup the backend-authoritative mode is loaded and the correct CSS class is applied.
+ * Every toggle is persisted to the backend via POST /api/mode.
+ * Call feedKey(e.code) from every keydown handler.
+ */
 
 const SECRET_DIABOLO    = ['Digit6', 'Digit6', 'Digit6'];
 const SECRET_LION       = ['KeyK', 'KeyL', 'KeyC'];
@@ -15,103 +26,76 @@ const SECRET_DYSIS      = ['Digit4', 'Digit2', 'Digit7'];
 const SECRET_KWAAK      = ['KeyK', 'KeyW', 'KeyA', 'KeyA', 'KeyK'];
 const SECRET_KOMPAS     = ['KeyK', 'KeyO', 'KeyM', 'KeyP', 'KeyA', 'KeyS'];
 const SECRET_KLOOTVIOOL = ['KeyK', 'KeyL', 'KeyO', 'KeyO', 'KeyT', 'KeyV', 'KeyI', 'KeyO', 'KeyO', 'KeyL'];
-const SECRET_MAX        = Math.max(
+const SECRET_MAX = Math.max(
     SECRET_DIABOLO.length, SECRET_LION.length, SECRET_DEMOS.length,
     SECRET_DYSIS.length, SECRET_KWAAK.length, SECRET_KOMPAS.length,
     SECRET_KLOOTVIOOL.length
 );
 const buffer = [];
 
-/**
- * Composable for secret easter egg background modes.
- * - 666        → diabolo-mode (black + red corner + geheim-logo)
- * - klc        → lion-mode   (deep red + white leeuwgod watermark)
- * - dms        → demos-mode
- * - 427        → dysis-mode  (dysis.jpg background)
- * - kwaak      → kwaak-mode  (kwaak.jpg background)
- * - kompas     → kompas-mode (kompas.jpg background)
- * - klootviool → klootviool-mode (klootviool.png background)
- * Modes are mutually exclusive; re-entering the active code reverts to normal.
- * Call `feedKey(e.code)` from every keydown handler.
- */
+const CSS_CLASS = {
+    [ApplicationModes.Diabolo]: 'diabolo-mode',
+    [ApplicationModes.Lion]: 'lion-mode',
+    [ApplicationModes.Dms]: 'demos-mode',
+    [ApplicationModes.Dysis]: 'dysis-mode',
+    [ApplicationModes.Kwaak]: 'kwaak-mode',
+    [ApplicationModes.Kompas]: 'kompas-mode',
+    [ApplicationModes.Klootviool]: 'klootviool-mode',
+};
+
+function applyBodyClass(modeName) {
+    Object.values(CSS_CLASS).forEach(c => document.body.classList.remove(c));
+    if (modeName && modeName !== 'Official') {
+        const cls = CSS_CLASS[modeName];
+        if (cls) document.body.classList.add(cls);
+    }
+}
+
 export function useDifferentBgMode() {
-    const diaboloActive    = ref(document.body.classList.contains('diabolo-mode'));
-    const lionActive       = ref(document.body.classList.contains('lion-mode'));
-    const demosActive      = ref(document.body.classList.contains('demos-mode'));
-    const dysisActive      = ref(document.body.classList.contains('dysis-mode'));
-    const kwaakActive      = ref(document.body.classList.contains('kwaak-mode'));
-    const kompasActive     = ref(document.body.classList.contains('kompas-mode'));
-    const klootvioolActive = ref(document.body.classList.contains('klootviool-mode'));
+    const { activeMode, setMode, loadMode } = useAppMode();
 
-    function clearAll() {
-        setDiabolo(false); setLion(false); setDemos(false);
-        setDysis(false); setKwaak(false); setKompas(false);
-        setKlootviool(false);
+    const diaboloActive    = ref(false);
+    const lionActive       = ref(false);
+    const demosActive      = ref(false);
+    const dysisActive      = ref(false);
+    const kwaakActive      = ref(false);
+    const kompasActive     = ref(false);
+    const klootvioolActive = ref(false);
+
+    function syncFromMode(modeName) {
+        diaboloActive.value    = modeName === ApplicationModes.Diabolo;
+        lionActive.value       = modeName === ApplicationModes.Lion;
+        demosActive.value      = modeName === ApplicationModes.Dms;
+        dysisActive.value      = modeName === ApplicationModes.Dysis;
+        kwaakActive.value      = modeName === ApplicationModes.Kwaak;
+        kompasActive.value     = modeName === ApplicationModes.Kompas;
+        klootvioolActive.value = modeName === ApplicationModes.Klootviool;
+        applyBodyClass(modeName);
     }
 
-    function setDiabolo(on) {
-        diaboloActive.value = on;
-        document.body.classList.toggle('diabolo-mode', on);
-        localStorage.setItem(STORAGE_DIABOLO, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'diabolo', active: on } }));
+    watch(activeMode, syncFromMode, { immediate: false });
+
+    loadMode().then(() => syncFromMode(activeMode.value));
+
+    async function activateMode(modeName) {
+        const next = activeMode.value === modeName ? ApplicationModes.Official : modeName;
+        await setMode(next);
+        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: next } }));
     }
 
-    function setLion(on) {
-        lionActive.value = on;
-        document.body.classList.toggle('lion-mode', on);
-        localStorage.setItem(STORAGE_LION, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'lion', active: on } }));
-    }
-
-    function setDemos(on) {
-        demosActive.value = on;
-        document.body.classList.toggle('demos-mode', on);
-        localStorage.setItem(STORAGE_DEMOS, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'demos', active: on } }));
-    }
-
-    function setDysis(on) {
-        dysisActive.value = on;
-        document.body.classList.toggle('dysis-mode', on);
-        localStorage.setItem(STORAGE_DYSIS, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'dysis', active: on } }));
-    }
-
-    function setKwaak(on) {
-        kwaakActive.value = on;
-        document.body.classList.toggle('kwaak-mode', on);
-        localStorage.setItem(STORAGE_KWAAK, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'kwaak', active: on } }));
-    }
-
-    function setKompas(on) {
-        kompasActive.value = on;
-        document.body.classList.toggle('kompas-mode', on);
-        localStorage.setItem(STORAGE_KOMPAS, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'kompas', active: on } }));
-    }
-
-    function setKlootviool(on) {
-        klootvioolActive.value = on;
-        document.body.classList.toggle('klootviool-mode', on);
-        localStorage.setItem(STORAGE_KLOOTVIOOL, on ? '1' : '0');
-        window.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'klootviool', active: on } }));
-    }
-
-    function toggleDiabolo()    { const next = !diaboloActive.value;    if (next) clearAll(); setDiabolo(next); }
-    function toggleLion()       { const next = !lionActive.value;       if (next) clearAll(); setLion(next); }
-    function toggleDemos()      { const next = !demosActive.value;      if (next) clearAll(); setDemos(next); }
-    function toggleDysis()      { const next = !dysisActive.value;      if (next) clearAll(); setDysis(next); }
-    function toggleKwaak()      { const next = !kwaakActive.value;      if (next) clearAll(); setKwaak(next); }
-    function toggleKompas()     { const next = !kompasActive.value;     if (next) clearAll(); setKompas(next); }
-    function toggleKlootviool() { const next = !klootvioolActive.value; if (next) clearAll(); setKlootviool(next); }
+    function toggleDiabolo()    { return activateMode(ApplicationModes.Diabolo); }
+    function toggleLion()       { return activateMode(ApplicationModes.Lion); }
+    function toggleDemos()      { return activateMode(ApplicationModes.Dms); }
+    function toggleDysis()      { return activateMode(ApplicationModes.Dysis); }
+    function toggleKwaak()      { return activateMode(ApplicationModes.Kwaak); }
+    function toggleKompas()     { return activateMode(ApplicationModes.Kompas); }
+    function toggleKlootviool() { return activateMode(ApplicationModes.Klootviool); }
 
     function matchSequence(secret) {
         const tail = buffer.slice(-secret.length);
         return tail.length === secret.length && tail.every((k, i) => k === secret[i]);
     }
 
-    /** Feed every keydown code; returns true when a sequence triggers. */
     function feedKey(code) {
         buffer.push(code);
         if (buffer.length > SECRET_MAX) buffer.shift();
@@ -127,5 +111,10 @@ export function useDifferentBgMode() {
         return false;
     }
 
-    return { diaboloActive, lionActive, demosActive, dysisActive, kwaakActive, kompasActive, klootvioolActive, feedKey };
+    return {
+        activeMode,
+        diaboloActive, lionActive, demosActive, dysisActive,
+        kwaakActive, kompasActive, klootvioolActive,
+        feedKey,
+    };
 }

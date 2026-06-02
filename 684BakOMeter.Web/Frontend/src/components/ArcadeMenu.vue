@@ -57,13 +57,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useGlobalMusic } from '../composables/useGlobalMusic.js';
 import { useIdleTimeout } from '../composables/useIdleTimeout.js';
 import { useKeyController } from '../composables/useKeyController.js';
+import { useAppMode } from '../composables/useAppMode.js';
 
 // Use the centralized global music service
 useGlobalMusic();
+
+const { activeMode, loadMode } = useAppMode();
 
 // --- SVG icon paths (inline, no emoji dependency) ---
 const ICONS = {
@@ -119,11 +122,18 @@ function rankClass(rank) {
     return '';
 }
 
-function loadLeaderboard(index) {
+async function loadLeaderboard(index) {
     const type = props.chugTypes[index];
     if (!type) return;
-    const data = props.leaderboards[type.slug];
-    currentLeaderboard.value = Array.isArray(data) ? data : [];
+
+    try {
+        const r = await fetch(`/api/leaderboards?type=${type.slug}&mode=${activeMode.value}`);
+        const data = await r.json();
+        currentLeaderboard.value = Array.isArray(data) ? data : [];
+    } catch {
+        const fallback = props.leaderboards[type.slug];
+        currentLeaderboard.value = Array.isArray(fallback) ? fallback : [];
+    }
 }
 
 function startAttract() {
@@ -254,6 +264,7 @@ function startManagerWindow() {
 
 // --- Keyboard ---
 useKeyController({
+    enableModeSwitching: true,
     feedSecrets: (code, e) => checkSecrets(code, e),
     onActivate: () => {
         if (phase.value === 'attract') { showMenu(); return; }
@@ -284,7 +295,17 @@ useKeyController({
     },
 });
 
-onMounted(() => { startAttract(); startManagerWindow(); });
+watch(activeMode, () => {
+    if (phase.value === 'attract') {
+        loadLeaderboard(currentTypeIndex.value);
+    }
+});
+
+onMounted(async () => {
+    await loadMode();
+    startAttract();
+    startManagerWindow();
+});
 onUnmounted(() => {
     stopAttract();
     idleTimeout.stop();

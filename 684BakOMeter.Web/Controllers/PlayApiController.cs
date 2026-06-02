@@ -11,11 +11,16 @@ public class PlayApiController : ControllerBase
 {
     private readonly PlayerService _playerService;
     private readonly IChugAttemptRepository _attempts;
+    private readonly AppModeService _modeService;
 
-    public PlayApiController(PlayerService playerService, IChugAttemptRepository attempts)
+    public PlayApiController(
+        PlayerService playerService,
+        IChugAttemptRepository attempts,
+        AppModeService modeService)
     {
         _playerService = playerService;
-        _attempts = attempts;
+        _attempts      = attempts;
+        _modeService   = modeService;
     }
 
     /// <summary>
@@ -47,7 +52,8 @@ public class PlayApiController : ControllerBase
         if (request.DurationMs <= 0)
             return BadRequest(new { error = "Duration must be positive." });
 
-        var now = DateTime.UtcNow;
+        var now  = DateTime.UtcNow;
+        var mode = await _modeService.GetCurrentModeAsync();
         var attempt = new ChugAttempt
         {
             PlayerId   = request.PlayerId,
@@ -55,6 +61,8 @@ public class PlayApiController : ControllerBase
             EndedAt    = now,
             DurationMs = request.DurationMs,
             ChugType   = chugType,
+            IsOfficial = request.IsOfficial,
+            Mode       = mode,
             // IsHighScore is calculated and set by the repository
         };
 
@@ -74,4 +82,4 @@ public class PlayApiController : ControllerBase
 }
 
 public record ResolvePlayerRequest(string Name);
-public record SaveAttemptRequest(int PlayerId, string ChugType, int DurationMs);
+public record SaveAttemptRequest(int PlayerId, string ChugType, int DurationMs, bool IsOfficial = true);

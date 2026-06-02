@@ -23,6 +23,9 @@ import { useDifferentBgMode } from './useDifferentBgMode.js';
  * @param {Function} [options.feedSecrets]     — optional extra secret-code
  *                                               handler (e.g. ArcadeMenu 684).
  *                                               Receives `e.code` and `e`.
+ * @param {boolean}  [options.enableModeSwitching=false]
+ *                                               when true, feeds global mode
+ *                                               secret sequences (DMS/666/etc).
  *
  * All named action callbacks receive the raw KeyboardEvent so the
  * component can inspect modifiers, do conditional logic, etc.
@@ -52,12 +55,23 @@ export function useKeyController(options = {}) {
     };
 
     function handleKeyDown(e) {
+        const target = e.target;
+        const isTypingTarget = target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target instanceof HTMLSelectElement
+            || (target instanceof HTMLElement && target.isContentEditable);
+
         // Feed easter-egg trackers
-        bgMode.feedKey(e.code);
+        if (options.enableModeSwitching === true) {
+            bgMode.feedKey(e.code);
+        }
         options.feedSecrets?.(e.code, e);
 
         // Let the component intercept any key before named dispatch
         if (options.onKey?.(e) === true) return;
+
+        // Do not hijack Enter/arrow keys while typing in inputs.
+        if (isTypingTarget) return;
 
         const actionName = ACTION_MAP[e.code];
         if (!actionName) return;

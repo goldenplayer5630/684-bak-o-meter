@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<ChugAttempt> ChugAttempts => Set<ChugAttempt>();
     public DbSet<OneVsOneMatch> OneVsOneMatches => Set<OneVsOneMatch>();
     public DbSet<NfcTag> NfcTags => Set<NfcTag>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

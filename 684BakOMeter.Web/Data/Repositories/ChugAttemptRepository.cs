@@ -1,4 +1,4 @@
-using _684BakOMeter.Web.Data.Persistence;
+ï»¿using _684BakOMeter.Web.Data.Persistence;
 using _684BakOMeter.Web.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -95,12 +95,14 @@ public class ChugAttemptRepository : IChugAttemptRepository
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ChugAttempt>> GetLeaderboardAsync(ChugType chugType, int count = 10)
+    public async Task<IEnumerable<ChugAttempt>> GetLeaderboardAsync(
+        ChugType chugType, int count = 10, ApplicationMode? mode = ApplicationMode.Official)
     {
-        // One entry per player — the attempt with the lowest DurationMs (ties: lowest Id)
-        var bestIds = await _db.ChugAttempts
-            .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+        // One entry per player - the attempt with the lowest DurationMs (ties: lowest Id)
+        var query = _db.ChugAttempts.AsNoTracking().Where(a => a.ChugType == chugType);
+        if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+
+        var bestIds = await query
             .GroupBy(a => a.PlayerId)
             .Select(g => g.OrderBy(a => a.DurationMs).ThenBy(a => a.Id).First().Id)
             .ToListAsync();
@@ -112,19 +114,19 @@ public class ChugAttemptRepository : IChugAttemptRepository
             .Take(count)
             .ToListAsync();
 
-        // Every returned attempt is the player's best for this type
         foreach (var a in attempts) a.IsHighScore = true;
         return attempts;
     }
 
     /// <inheritdoc />
     public async Task<(IEnumerable<ChugAttempt> Items, int TotalCount)> GetLeaderboardPagedAsync(
-        ChugType chugType, int page, int pageSize)
+        ChugType chugType, int page, int pageSize, ApplicationMode? mode = ApplicationMode.Official)
     {
-        // One entry per player — the attempt with the lowest DurationMs (ties: lowest Id)
-        var bestIds = await _db.ChugAttempts
-            .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+        // One entry per player - the attempt with the lowest DurationMs (ties: lowest Id)
+        var query = _db.ChugAttempts.AsNoTracking().Where(a => a.ChugType == chugType);
+        if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+
+        var bestIds = await query
             .GroupBy(a => a.PlayerId)
             .Select(g => g.OrderBy(a => a.DurationMs).ThenBy(a => a.Id).First().Id)
             .ToListAsync();
@@ -143,7 +145,8 @@ public class ChugAttemptRepository : IChugAttemptRepository
     }
 
     /// <inheritdoc />
-    public async Task<int?> GetAttemptRankAsync(int attemptId, ChugType chugType)
+    public async Task<int?> GetAttemptRankAsync(
+        int attemptId, ChugType chugType, ApplicationMode? mode = ApplicationMode.Official)
     {
         var attempt = await _db.ChugAttempts
             .AsNoTracking()
@@ -156,10 +159,13 @@ public class ChugAttemptRepository : IChugAttemptRepository
             .Where(a => a.PlayerId == attempt.PlayerId && a.ChugType == chugType)
             .MinAsync(a => a.DurationMs);
 
-        // Count players whose personal best is strictly faster
-        var rank = await _db.ChugAttempts
+        // Count players whose personal best is strictly faster, within the same mode
+        var rankQuery = _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.ChugType == chugType)
+            .Where(a => a.ChugType == chugType);
+        if (mode.HasValue) rankQuery = rankQuery.Where(a => a.Mode == mode.Value);
+
+        var rank = await rankQuery
             .GroupBy(a => a.PlayerId)
             .Select(g => g.Min(a => a.DurationMs))
             .CountAsync(best => best < playerBestDuration) + 1;
@@ -168,11 +174,17 @@ public class ChugAttemptRepository : IChugAttemptRepository
     }
 
     /// <inheritdoc />
-    public async Task<ChugAttempt?> GetPersonalBestAsync(int playerId, ChugType chugType)
+    public async Task<ChugAttempt?> GetPersonalBestAsync(
+        int playerId,
+        ChugType chugType,
+        ApplicationMode? mode = ApplicationMode.Official)
     {
-        var best = await _db.ChugAttempts
+        var query = _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
+            .Where(a => a.PlayerId == playerId && a.ChugType == chugType);
+        if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+
+        var best = await query
             .OrderBy(a => a.DurationMs)
             .ThenBy(a => a.Id)
             .FirstOrDefaultAsync();
@@ -182,12 +194,17 @@ public class ChugAttemptRepository : IChugAttemptRepository
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<PersonalStat>> GetPersonalStatsAsync(int playerId)
+    public async Task<IEnumerable<PersonalStat>> GetPersonalStatsAsync(
+        int playerId,
+        ApplicationMode? mode = ApplicationMode.Official)
     {
         // Load all attempts for this player in one query
-        var playerAttempts = await _db.ChugAttempts
+        var playerQuery = _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.PlayerId == playerId)
+            .Where(a => a.PlayerId == playerId);
+        if (mode.HasValue) playerQuery = playerQuery.Where(a => a.Mode == mode.Value);
+
+        var playerAttempts = await playerQuery
             .ToListAsync();
 
         var stats = new List<PersonalStat>();
@@ -203,6 +220,7 @@ public class ChugAttemptRepository : IChugAttemptRepository
             var rank = await _db.ChugAttempts
                 .AsNoTracking()
                 .Where(a => a.ChugType == chugType)
+                .Where(a => !mode.HasValue || a.Mode == mode.Value)
                 .GroupBy(a => a.PlayerId)
                 .Select(g => g.Min(a => a.DurationMs))
                 .CountAsync(bestMs => bestMs < best.DurationMs) + 1;
@@ -210,6 +228,7 @@ public class ChugAttemptRepository : IChugAttemptRepository
             var total = await _db.ChugAttempts
                 .AsNoTracking()
                 .Where(a => a.ChugType == chugType)
+                .Where(a => !mode.HasValue || a.Mode == mode.Value)
                 .Select(a => a.PlayerId)
                 .Distinct()
                 .CountAsync();
@@ -222,11 +241,17 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
     /// <inheritdoc />
     public async Task<IEnumerable<ChugAttempt>> GetRecentByPlayerAndTypeAsync(
-        int playerId, ChugType chugType, int count = 10)
+        int playerId,
+        ChugType chugType,
+        int count = 10,
+        ApplicationMode? mode = ApplicationMode.Official)
     {
-        var attempts = await _db.ChugAttempts
+        var query = _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
+            .Where(a => a.PlayerId == playerId && a.ChugType == chugType);
+        if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+
+        var attempts = await query
             .OrderByDescending(a => a.StartedAt)
             .Take(count)
             .ToListAsync();
@@ -263,7 +288,7 @@ public class ChugAttemptRepository : IChugAttemptRepository
                 .AsNoTracking()
                 .Where(a => a.PlayerId == playerId && a.ChugType == chugType)
                 .OrderBy(a => a.DurationMs)
-                .ThenBy(a => a.Id)      // tie-break: earliest attempt wins
+                .ThenBy(a => a.Id)
                 .Select(a => (int?)a.Id)
                 .FirstOrDefaultAsync();
 

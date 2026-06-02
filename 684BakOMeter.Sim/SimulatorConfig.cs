@@ -16,19 +16,19 @@ public static class SimulatorConfig
     #region Calibration Base Values
 
     /// <summary>Base load cell value when nothing is on the scale.</summary>
-    public const int Nothing = 34413;
+    public const int Nothing = -35000;
 
     /// <summary>Base load cell value for an empty glass.</summary>
-    public const int EmptyGlass = 77670;
+    public const int EmptyGlass = -30000;
 
     /// <summary>Base load cell value for a full glass.</summary>
-    public const int FullGlass = 92366;
+    public const int FullGlass = -27000;
 
     /// <summary>Base load cell value for an empty pul (small glass).</summary>
-    public const int EmptyPul = 120680;
+    public const int EmptyPul = -28000;
 
     /// <summary>Base load cell value for a full pul (small glass).</summary>
-    public const int FullPul = 170882;
+    public const int FullPul = -20000;
 
     #endregion
 

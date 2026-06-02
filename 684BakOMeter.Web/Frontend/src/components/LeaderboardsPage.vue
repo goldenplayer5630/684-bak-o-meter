@@ -35,6 +35,7 @@
                          :class="rowClass(e.rank)">
                         <span class="leaderboard-rank" :class="rankClass(e.rank)">{{ e.rank }}</span>
                         <span class="leaderboard-name">{{ e.playerName }}</span>
+                        <span class="leaderboard-mode">{{ (e.mode ?? activeMode).toUpperCase() }}</span>
                         <span class="leaderboard-time">{{ e.duration }}</span>
                     </div>
                 </template>
@@ -59,6 +60,9 @@
             &lsaquo; TERUG (DRUK ESC)
         </button>
 
+        <!-- Active mode badge -->
+        <div v-if="activeMode !== ApplicationModes.Official" class="mode-badge">{{ activeMode.toUpperCase() }} MODE</div>
+
         <!-- Key hint -->
         <div class="arcade-subtitle" style="font-size:.4rem;">
             &#8593;&#8595;&#8592;&#8594; NAVIGEREN &bull; SPATIE/ENTER SELECTEREN &bull; ESC TERUG
@@ -70,9 +74,12 @@
 import { ref, computed, onMounted } from 'vue';
 import { useKeyController } from '../composables/useKeyController.js';
 import { useGlobalMusic } from '../composables/useGlobalMusic.js';
+import { ApplicationModes, useAppMode } from '../composables/useAppMode.js';
 
 // Use the centralized global music service
 useGlobalMusic();
+
+const { activeMode, loadMode } = useAppMode();
 
 const PER_PAGE = 8;
 
@@ -94,7 +101,7 @@ const currentLabel = computed(() => props.chugTypes[tabIdx.value]?.label ?? '');
 async function fetchPage(slug, p) {
     loading.value = true;
     try {
-        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}`);
+        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}&mode=${activeMode.value}`);
         const d = await r.json();
         entries.value = d.entries    ?? [];
         pages.value   = d.totalPages ?? 1;
@@ -169,16 +176,39 @@ useKeyController({
 });
 
 onMounted(() => {
-    if (props.chugTypes.length > 0) {
-        const slug = props.chugTypes[0].slug;
-        const seed = props.leaderboards[slug];
-        if (Array.isArray(seed) && seed.length) entries.value = seed;
-        fetchPage(slug, 1);
-    }
+    loadMode().finally(() => {
+        if (props.chugTypes.length > 0) {
+            const slug = props.chugTypes[0].slug;
+            const seed = props.leaderboards[slug];
+            if (Array.isArray(seed) && seed.length) entries.value = seed;
+            fetchPage(slug, 1);
+        }
+    });
 });
 </script>
 
 <style scoped>
+.mode-badge {
+    position: fixed;
+    top: 0.6rem;
+    right: 0.8rem;
+    font-family: var(--font-arcade);
+    font-size: 0.5rem;
+    color: #ff9100;
+    letter-spacing: 2px;
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+.leaderboard-mode {
+    font-family: var(--font-arcade);
+    font-size: 0.42rem;
+    color: rgba(255, 255, 255, 0.72);
+    min-width: 2.6rem;
+    text-align: right;
+    margin-right: 0.55rem;
+    letter-spacing: 1px;
+}
 .lb-pager {
     display: flex;
     margin-top: 0.6rem;

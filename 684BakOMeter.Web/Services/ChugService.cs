@@ -133,7 +133,7 @@ public class ChugService(IHubContext<ChugHub> hubContext, ILogger<ChugService> l
 
             // Glass returned — confirm sustained weight above threshold.
             case ChugSessionState.Running when session.TrackReturn(
-                session.BaselineWeight!.Value * (1 - _config.LiftDropFactor), _config.ReturnConfirmReadings):
+                session.BaselineWeight!.Value - Math.Abs(session.BaselineWeight.Value) * _config.LiftDropFactor, _config.ReturnConfirmReadings):
 
                 session.MarkCompleted();
                 logger.LogInformation(

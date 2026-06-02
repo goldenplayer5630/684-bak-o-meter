@@ -11,11 +11,16 @@ public class PersonalApiController : ControllerBase
 {
     private readonly IPlayerRepository _players;
     private readonly IChugAttemptRepository _attempts;
+    private readonly AppModeService _modeService;
 
-    public PersonalApiController(IPlayerRepository players, IChugAttemptRepository attempts)
+    public PersonalApiController(
+        IPlayerRepository players,
+        IChugAttemptRepository attempts,
+        AppModeService modeService)
     {
         _players  = players;
         _attempts = attempts;
+        _modeService = modeService;
     }
 
     /// <summary>
@@ -23,7 +28,10 @@ public class PersonalApiController : ControllerBase
     /// GET /api/personal?name=vincent
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? name, [FromQuery] int? playerId)
+    public async Task<IActionResult> Get(
+        [FromQuery] string? name,
+        [FromQuery] int? playerId,
+        [FromQuery] string? mode = null)
     {
         Domain.Entities.Player? player = null;
 
@@ -44,7 +52,25 @@ public class PersonalApiController : ControllerBase
         if (player is null)
             return NotFound(new { error = "Speler niet gevonden." });
 
-        var stats = await _attempts.GetPersonalStatsAsync(player.Id);
+        ApplicationMode? appMode;
+        if (string.IsNullOrWhiteSpace(mode))
+        {
+            appMode = await _modeService.GetCurrentModeAsync();
+        }
+        else if (mode == "null")
+        {
+            appMode = null;
+        }
+        else if (Enum.TryParse<ApplicationMode>(mode, ignoreCase: true, out var parsedMode))
+        {
+            appMode = parsedMode;
+        }
+        else
+        {
+            return BadRequest(new { error = "Invalid mode." });
+        }
+
+        var stats = await _attempts.GetPersonalStatsAsync(player.Id, appMode);
 
         var result = stats.Select(s => new
         {
@@ -61,6 +87,7 @@ public class PersonalApiController : ControllerBase
         {
             playerId = player.Id,
             playerName = player.Name,
+            mode = appMode?.ToString(),
             stats = result,
         });
     }
@@ -73,16 +100,35 @@ public class PersonalApiController : ControllerBase
     public async Task<IActionResult> GetHistory(
         [FromQuery] int playerId,
         [FromQuery] string type,
-        [FromQuery] int count = 10)
+        [FromQuery] int count = 10,
+        [FromQuery] string? mode = null)
     {
         if (!Enum.TryParse<ChugType>(type, ignoreCase: true, out var chugType))
             return BadRequest(new { error = "Invalid chug type." });
+
+        ApplicationMode? appMode;
+        if (string.IsNullOrWhiteSpace(mode))
+        {
+            appMode = await _modeService.GetCurrentModeAsync();
+        }
+        else if (mode == "null")
+        {
+            appMode = null;
+        }
+        else if (Enum.TryParse<ApplicationMode>(mode, ignoreCase: true, out var parsedMode))
+        {
+            appMode = parsedMode;
+        }
+        else
+        {
+            return BadRequest(new { error = "Invalid mode." });
+        }
 
         var player = await _players.GetByIdAsync(playerId);
         if (player is null)
             return NotFound(new { error = "Speler niet gevonden." });
 
-        var attempts = await _attempts.GetRecentByPlayerAndTypeAsync(playerId, chugType, count);
+        var attempts = await _attempts.GetRecentByPlayerAndTypeAsync(playerId, chugType, count, appMode);
 
         // Return in chronological order (oldest first) for graphing
         var result = attempts.Reverse().Select(a => new

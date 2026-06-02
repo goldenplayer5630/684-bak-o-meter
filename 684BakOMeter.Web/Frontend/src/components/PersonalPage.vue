@@ -2,6 +2,29 @@
     <div class="arcade-page">
         <h1 class="arcade-title arcade-title--small">PROFIEL</h1>
 
+        <!-- DMS mode: name lookup instead of NFC -->
+        <template v-if="phase === 'name'">
+            <div class="leaderboard-panel mt-2">
+                <div class="leaderboard-title">DMS PROFIEL OPZOEKEN</div>
+                <div class="arcade-subtitle mt-1">Typ je naam en druk ENTER</div>
+                <div class="ps-name-form">
+                    <input
+                        ref="nameInputRef"
+                        v-model="playerNameInput"
+                        class="arcade-input"
+                        type="text"
+                        maxlength="30"
+                        placeholder="Typ je naam"
+                        @keyup.enter="onSubmitName"
+                    />
+                </div>
+            </div>
+
+            <button ref="nameBackBtnRef" class="arcade-btn arcade-btn--back mt-1" @click="goBack()">
+                &lsaquo; TERUG (DRUK ESC)
+            </button>
+        </template>
+
         <!-- Phase 1: NFC scan to identify player -->
         <template v-if="phase === 'scan'">
             <NfcScanGate @scanned="onScanned" @back="goBack" />
@@ -73,7 +96,7 @@
             </div>
 
             <!-- NFC tag management -->
-            <div class="ps-nfc-section mt-1" @mouseenter="focus = 'nfc'">
+            <div v-if="!isDmsMode" class="ps-nfc-section mt-1" @mouseenter="focus = 'nfc'">
                 <ManageNfcTags ref="manageNfcRef"
                                :playerId="playerId"
                                :keyboardSelected="focus === 'nfc'" />
@@ -96,19 +119,25 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import ManageNfcTags from './ManageNfcTags.vue';
 import { useKeyController } from '../composables/useKeyController.js';
 import { useGlobalMusic } from '../composables/useGlobalMusic.js';
+import { ApplicationModes, useAppMode } from '../composables/useAppMode.js';
 
 // Use the centralized global music service
 useGlobalMusic();
 
+const { activeMode, loadMode } = useAppMode();
+const isDmsMode = computed(() => activeMode.value === ApplicationModes.Dms);
+
 // --- Phase control ---
 const phase = ref('scan');
 const pendingTagUid = ref('');
+const playerNameInput = ref('');
+const nameInputRef = ref(null);
 
 // --- Player ---
 const playerId = ref(0);
@@ -169,7 +198,7 @@ async function loadProfile(pid, pname) {
 
     // Fetch personal stats
     try {
-        const r = await fetch(`/api/personal?playerId=${pid}`);
+        const r = await fetch(`/api/personal?playerId=${pid}&mode=${activeMode.value}`);
         if (r.ok) {
             const d = await r.json();
             stats.value = d.stats ?? [];
@@ -196,12 +225,22 @@ function pickTab(i) {
 
 function moveFocusDown() {
     if (phase.value !== 'profile') return;
+    if (isDmsMode.value) {
+        if (focus.value === 'tab') focus.value = 'back';
+        return;
+    }
+
     if (focus.value === 'tab') focus.value = 'nfc';
     else if (focus.value === 'nfc') focus.value = 'back';
 }
 
 function moveFocusUp() {
     if (phase.value !== 'profile') return;
+    if (isDmsMode.value) {
+        if (focus.value === 'back') focus.value = 'tab';
+        return;
+    }
+
     if (focus.value === 'back') focus.value = 'nfc';
     else if (focus.value === 'nfc') focus.value = 'tab';
 }
@@ -219,6 +258,21 @@ function activateFocus() {
     }
 }
 
+async function onSubmitName() {
+    const name = playerNameInput.value?.trim();
+    if (!name) return;
+
+    try {
+        const r = await fetch(`/api/personal?name=${encodeURIComponent(name)}&mode=${activeMode.value}`);
+        if (!r.ok) return;
+
+        const d = await r.json();
+        await loadProfile(d.playerId, d.playerName);
+    } catch {
+        // silent; keep user on name phase
+    }
+}
+
 async function loadGraph(idx) {
     const slug = chugTypes.value[idx]?.slug;
     if (!slug) { graphData.value = []; return; }
@@ -226,7 +280,7 @@ async function loadGraph(idx) {
     graphLoading.value = true;
     try {
         const r = await fetch(
-            `/api/personal/history?playerId=${playerId.value}&type=${slug}&count=10`
+            `/api/personal/history?playerId=${playerId.value}&type=${slug}&count=10&mode=${activeMode.value}`
         );
         if (r.ok) {
             graphData.value = await r.json();
@@ -365,7 +419,30 @@ useKeyController({
     },
     onDown: () => moveFocusDown(),
     onUp: () => moveFocusUp(),
-    onActivate: () => activateFocus(),
+    onActivate: () => {
+        if (phase.value === 'name') {
+            onSubmitName();
+            return;
+        }
+        activateFocus();
+    },
+});
+
+onMounted(async () => {
+    await loadMode();
+    phase.value = isDmsMode.value ? 'name' : 'scan';
+    if (phase.value === 'name') {
+        await nextTick();
+        nameInputRef.value?.focus();
+    }
+});
+
+watch(isDmsMode, (dms) => {
+    if (phase.value === 'profile') return;
+    phase.value = dms ? 'name' : 'scan';
+    if (phase.value === 'name') {
+        nextTick(() => nameInputRef.value?.focus());
+    }
 });
 </script>
 
@@ -377,6 +454,25 @@ useKeyController({
     text-shadow: var(--glow-yellow);
     letter-spacing: 1px;
     text-align: center;
+}
+
+.ps-name-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+
+.arcade-input {
+    width: 100%;
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    padding: 0.45rem 0.5rem;
+    outline: none;
 }
 
 .ps-dim {

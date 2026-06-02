@@ -40,6 +40,9 @@
             </div>
         </template>
 
+        <!-- DMS mode indicator -->
+        <div v-if="isDmsMode && step === 'mode'" class="dms-badge">DMS MODE</div>
+
         <!-- STEP 2: NFC scan for player 1 -->
         <template v-if="step === 'nfc-scan'">
             <h1 class="arcade-title arcade-title--small">SPELER 1</h1>
@@ -53,6 +56,23 @@
                                @cancel="step = 'nfc-scan'" />
         </template>
 
+        <!-- STEP 2c: DMS name input for player 1 -->
+        <template v-if="step === 'name-input'">
+            <h1 class="arcade-title arcade-title--small">SPELER 1</h1>
+            <div class="arcade-subtitle mt-2">Typ je naam en druk ENTER</div>
+            <div class="ps-name-form mt-2">
+                <input ref="nameInput1"
+                       v-model="nameInputValue"
+                       class="arcade-input"
+                       type="text"
+                       maxlength="32"
+                       @keydown.enter="submitName1"
+                       @keydown.esc="step = 'mode'"
+                       placeholder="Typ je naam"
+                       autocomplete="off" />
+            </div>
+        </template>
+
         <!-- STEP 3: NFC scan for player 2 (multiplayer only) -->
         <template v-if="step === 'nfc-scan-p2'">
             <h1 class="arcade-title arcade-title--small">SPELER 2</h1>
@@ -64,6 +84,23 @@
             <CreateUserFromNfc :tagUid="pendingTagUid"
                                @created="onPlayer2Created"
                                @cancel="step = 'nfc-scan-p2'" />
+        </template>
+
+        <!-- STEP 3c: DMS name input for player 2 -->
+        <template v-if="step === 'name-input-p2'">
+            <h1 class="arcade-title arcade-title--small">SPELER 2</h1>
+            <div class="arcade-subtitle mt-2">Typ je naam en druk ENTER</div>
+            <div class="ps-name-form mt-2">
+                <input ref="nameInput2"
+                       v-model="nameInputValue"
+                       class="arcade-input"
+                       type="text"
+                       maxlength="32"
+                       @keydown.enter="submitName2"
+                       @keydown.esc="step = 'name-input'"
+                       placeholder="Typ je naam"
+                       autocomplete="off" />
+            </div>
         </template>
 
         <!-- STEP 3: Baseline confirmation —
@@ -165,13 +202,14 @@
             </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, nextTick } from 'vue';
 import TimerDisplay from './TimerDisplay.vue';
 import NfcScanGate from './NfcScanGate.vue';
 import CreateUserFromNfc from './CreateUserFromNfc.vue';
 import { useKeyController } from '../composables/useKeyController.js';
 import { useChugHub } from '../composables/useChugHub.js';
 import { useBgMusic } from '../composables/useBgMusic.js';
+import { useDifferentBgMode } from '../composables/useDifferentBgMode.js';
 
 useBgMusic('/music/battle.mp3');
 
@@ -183,12 +221,19 @@ const props = defineProps({
 const chugHub = useChugHub();
 
 // --- Flow ---
-const step          = ref('mode');     // mode | nfc-scan | create-user | nfc-scan-p2 | create-user-p2 | chug | result
+const step          = ref('mode');     // mode | nfc-scan | create-user | name-input | nfc-scan-p2 | create-user-p2 | name-input-p2 | chug | result
 const chugPhase     = ref('baseline'); // baseline | timer  (sub-phase within 'chug')
 const modeIndex     = ref(0);
 const isMultiplayer = ref(false);
 
-const pendingTagUid = ref('');
+// DMS (unofficial) mode — activated by typing "DMS" anywhere (handled by useDifferentBgMode)
+const bgMode = useDifferentBgMode();
+const isDmsMode = computed(() => bgMode.demosActive.value);
+
+const pendingTagUid  = ref('');
+const nameInputValue = ref('');
+const nameInput1     = ref(null);
+const nameInput2     = ref(null);
 
 // --- Player data (resolved via NFC) ---
 const playerName1 = ref('');
@@ -343,11 +388,48 @@ function selectMode(i) {
     modeIndex.value = i;
     if (i === 0) {
         isMultiplayer.value = false;
-        step.value = 'nfc-scan';
+        step.value = isDmsMode.value ? 'name-input' : 'nfc-scan';
+        if (isDmsMode.value) nextTick(() => nameInput1.value?.focus());
     } else if (i === 1) {
         isMultiplayer.value = true;
-        step.value = 'nfc-scan';
+        step.value = isDmsMode.value ? 'name-input' : 'nfc-scan';
+        if (isDmsMode.value) nextTick(() => nameInput1.value?.focus());
     }
+}
+
+// DMS: resolve player by typed name and advance the flow
+async function submitName1() {
+    const name = nameInputValue.value.trim();
+    if (!name) return;
+    const player = await resolvePlayerByName(name);
+    player1Id = player.id;
+    playerName1.value = player.name;
+    nameInputValue.value = '';
+    if (isMultiplayer.value) {
+        step.value = 'name-input-p2';
+        nextTick(() => nameInput2.value?.focus());
+    } else {
+        startChug();
+    }
+}
+
+async function submitName2() {
+    const name = nameInputValue.value.trim();
+    if (!name) return;
+    const player = await resolvePlayerByName(name);
+    player2Id = player.id;
+    playerName2.value = player.name;
+    nameInputValue.value = '';
+    startChug();
+}
+
+async function resolvePlayerByName(name) {
+    const res = await fetch('/api/play/resolve-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+    });
+    return await res.json();
 }
 
 let completedScales = 0;
@@ -432,7 +514,7 @@ async function saveAndShowResult() {
         const r1 = await fetch('/api/play/save-attempt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerId: player1Id, chugType: props.chugTypeSlug, durationMs: elapsed1.value }),
+            body: JSON.stringify({ playerId: player1Id, chugType: props.chugTypeSlug, durationMs: elapsed1.value, isOfficial: !isDmsMode.value }),
         });
         const d1 = await r1.json();
         rank1.value      = d1.rank ?? null;
@@ -442,7 +524,7 @@ async function saveAndShowResult() {
             const r2 = await fetch('/api/play/save-attempt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId: player2Id, chugType: props.chugTypeSlug, durationMs: elapsed2.value }),
+                body: JSON.stringify({ playerId: player2Id, chugType: props.chugTypeSlug, durationMs: elapsed2.value, isOfficial: !isDmsMode.value }),
             });
             const d2 = await r2.json();
             rank2.value      = d2.rank ?? null;
@@ -482,10 +564,19 @@ useKeyController({
     onEscape:  () => { if (step.value === 'mode') goBack(); },
     onUp:      () => { if (step.value === 'mode') modeIndex.value = Math.max(0, modeIndex.value - 1); },
     onDown:    () => { if (step.value === 'mode') modeIndex.value = Math.min(2, modeIndex.value + 1); },
+
     onActivate: () => {
         if (step.value === 'mode') {
             if (modeIndex.value === 2) goBack();
             else selectMode(modeIndex.value);
+            return;
+        }
+        if (step.value === 'name-input') {
+            submitName1();
+            return;
+        }
+        if (step.value === 'name-input-p2') {
+            submitName2();
             return;
         }
         if (step.value === 'chug' && chugPhase.value === 'baseline') {
@@ -547,5 +638,33 @@ onUnmounted(() => {
     color: rgba(255,255,255,0.4);
     pointer-events: none;
     z-index: 9999;
+}
+.dms-badge {
+    position: fixed;
+    top: 0.6rem;
+    right: 0.8rem;
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    color: #ff9100;
+    letter-spacing: 2px;
+    opacity: 0.85;
+    pointer-events: none;
+}
+.ps-name-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+.arcade-input {
+    width: 100%;
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    padding: 0.45rem 0.5rem;
+    outline: none;
 }
 </style>

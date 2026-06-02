@@ -17,7 +17,7 @@ public class ChugSession
     private int _returnConfirmCount;
 
     /// <summary>Number of values kept in the rolling average window.</summary>
-    public const int AverageWindow = 4;
+    public const int AverageWindow = 2;
 
     public string SessionId { get; } = Guid.NewGuid().ToString("N")[..8];
     public int PlayerId { get; init; }
@@ -75,7 +75,8 @@ public class ChugSession
     /// <paramref name="liftDropFactor"/> × baseline (e.g. 0.5 = below 50 % of baseline).
     /// </summary>
     public bool IsLifted(decimal liftDropFactor)
-        => BaselineWeight.HasValue && CurrentAverage < BaselineWeight.Value * (1 - liftDropFactor);
+        => BaselineWeight.HasValue &&
+           CurrentAverage < BaselineWeight.Value - Math.Abs(BaselineWeight.Value) * liftDropFactor;
 
     /// <summary>Starts the timer and transitions to Running.</summary>
     public void MarkStarted()
@@ -99,6 +100,10 @@ public class ChugSession
 
         return _returnConfirmCount >= confirmReadings;
     }
+
+    // In ChugSession.cs
+    public decimal LiftThreshold(decimal liftDropFactor)
+        => BaselineWeight!.Value - Math.Abs(BaselineWeight.Value) * liftDropFactor;
 
     /// <summary>Stops the timer and transitions to Completed.</summary>
     public void MarkCompleted()

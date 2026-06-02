@@ -32,6 +32,19 @@ public class ChugAttempt
     public string? Notes { get; set; }
 
     /// <summary>
+    /// True when the attempt was made using NFC authentication (the default, Official mode).
+    /// False when the player identified themselves by typing a name only (DMS mode).
+    /// Unofficial attempts are still recorded but excluded from competitive rankings.
+    /// </summary>
+    public bool IsOfficial { get; set; } = true;
+
+    /// <summary>
+    /// The active <see cref="ApplicationMode"/> at the time this attempt was recorded.
+    /// Used to filter leaderboards so Official and DMS attempts are ranked separately.
+    /// </summary>
+    public ApplicationMode Mode { get; set; } = ApplicationMode.Official;
+
+    /// <summary>
     /// True when this attempt is the player's personal best for this chug type.
     /// Not persisted — calculated by <see cref="Data.Repositories.ChugAttemptRepository"/>
     /// at query time: the attempt with the lowest <see cref="DurationMs"/>

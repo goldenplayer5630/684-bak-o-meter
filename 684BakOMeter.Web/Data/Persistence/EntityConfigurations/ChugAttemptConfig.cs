@@ -42,6 +42,17 @@ public class ChugAttemptConfig : IEntityTypeConfiguration<ChugAttempt>
         builder.Property(ca => ca.Notes)
                .HasMaxLength(500);
 
+        builder.Property(ca => ca.IsOfficial)
+               .IsRequired()
+               .HasDefaultValue(true);
+
+        // ApplicationMode enum persisted as its string name ("Official" / "Dms")
+        builder.Property(ca => ca.Mode)
+               .IsRequired()
+               .HasConversion(EnumConverters.ToStringConverter<ApplicationMode>())
+               .HasMaxLength(50)
+               .HasDefaultValue(ApplicationMode.Official);
+
         // The 1v1 FK columns live on OneVsOneMatch (one-to-one, FK on that side).
         // EF will resolve OneVsOneMatchAsPlayer1 / AsPlayer2 via the OneVsOneMatchConfig.
     }

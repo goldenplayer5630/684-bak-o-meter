@@ -4,6 +4,16 @@
             ??? GEHEIM ???
         </h1>
 
+        <!-- Mode selector -->
+        <div class="leaderboard-tabs mt-1" style="margin-bottom:0.2rem;">
+            <button v-for="(m, i) in allModes" :key="m"
+                    class="leaderboard-tab"
+                    :class="{ selected: selectedMode === m }"
+                    @click="pickMode(m)">
+                {{ m.toUpperCase() }}
+            </button>
+        </div>
+
         <!-- Chug type tabs -->
         <div class="leaderboard-tabs mt-1">
             <button v-for="(ct, i) in chugTypes" :key="ct.slug"
@@ -37,6 +47,7 @@
                          :class="rowClass(e.rank)">
                         <span class="leaderboard-rank" :class="rankClass(e.rank)">{{ e.rank }}</span>
                         <span class="leaderboard-name">{{ e.playerName }}</span>
+                        <span class="leaderboard-mode">{{ (e.mode ?? selectedMode ?? ApplicationModes.Official).toUpperCase() }}</span>
                         <span class="leaderboard-time">{{ e.duration }}</span>
                     </div>
                 </template>
@@ -72,9 +83,20 @@
 import { ref, computed, onMounted } from 'vue';
 import { useKeyController } from '../composables/useKeyController.js';
 import { useGlobalMusic } from '../composables/useGlobalMusic.js';
+import { ApplicationModes, useAppMode } from '../composables/useAppMode.js';
 
 // Use the centralized global music service
 useGlobalMusic();
+
+const { availableModes, loadMode } = useAppMode();
+
+const allModes = computed(() => availableModes.value);
+const selectedMode = ref(null); // null = all modes
+
+function pickMode(m) {
+    selectedMode.value = selectedMode.value === m ? null : m;
+    load(tabIdx.value, 1);
+}
 
 const PER_PAGE = 8;
 
@@ -95,7 +117,8 @@ const currentLabel = computed(() => props.chugTypes[tabIdx.value]?.label ?? '');
 async function fetchPage(slug, p) {
     loading.value = true;
     try {
-        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}`);
+        const modeParam = selectedMode.value ? `&mode=${selectedMode.value}` : '&mode=null';
+        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}${modeParam}`);
         const d = await r.json();
         entries.value = d.entries    ?? [];
         pages.value   = d.totalPages ?? 1;
@@ -169,16 +192,32 @@ useKeyController({
 });
 
 onMounted(() => {
-    if (props.chugTypes.length > 0) {
-        const slug = props.chugTypes[0].slug;
-        const seed = props.leaderboards[slug];
-        if (Array.isArray(seed) && seed.length) entries.value = seed;
-        fetchPage(slug, 1);
-    }
+    loadMode().finally(() => {
+        if (!selectedMode.value && availableModes.value.includes(ApplicationModes.Official)) {
+            selectedMode.value = ApplicationModes.Official;
+        }
+
+        if (props.chugTypes.length > 0) {
+            const slug = props.chugTypes[0].slug;
+            const seed = props.leaderboards[slug];
+            if (Array.isArray(seed) && seed.length) entries.value = seed;
+            fetchPage(slug, 1);
+        }
+    });
 });
 </script>
 
 <style scoped>
+.leaderboard-mode {
+    font-family: var(--font-arcade);
+    font-size: 0.42rem;
+    color: rgba(255, 255, 255, 0.72);
+    min-width: 2.6rem;
+    text-align: right;
+    margin-right: 0.55rem;
+    letter-spacing: 1px;
+}
+
 .lb-pager {
     display: flex;
     margin-top: 0.6rem;

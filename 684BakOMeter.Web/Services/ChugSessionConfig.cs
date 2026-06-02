@@ -19,5 +19,5 @@ public class ChugSessionConfig
     /// Number of consecutive readings above the return threshold
     /// required to confirm the glass has been returned and complete the chug.
     /// </summary>
-    public int ReturnConfirmReadings { get; init; } = 3;
+    public int ReturnConfirmReadings { get; init; } = 2;
 }
