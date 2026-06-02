@@ -22,10 +22,16 @@ public class LeaderboardsApiController : ControllerBase
     /// Omit <c>mode</c> to include all environments.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string type, [FromQuery] string? mode = "Official")
+    public async Task<IActionResult> Get(
+        [FromQuery] string type,
+        [FromQuery] string? mode = "Official",
+        [FromQuery] string? period = "Overall")
     {
         if (!Enum.TryParse<ChugType>(type, ignoreCase: true, out var chugType))
             return BadRequest(new { error = "Invalid chug type." });
+
+        if (!Enum.TryParse<LeaderboardPeriod>(period, ignoreCase: true, out var leaderboardPeriod))
+            return BadRequest(new { error = "Invalid period." });
 
         ApplicationMode? appMode = null;
         if (!string.IsNullOrEmpty(mode) && mode != "null")
@@ -35,7 +41,7 @@ public class LeaderboardsApiController : ControllerBase
             appMode = parsedMode;
         }
 
-        var entries = await _attempts.GetLeaderboardAsync(chugType, 10, appMode);
+        var entries = await _attempts.GetLeaderboardAsync(chugType, 10, appMode, leaderboardPeriod);
 
         var result = entries.Select((e, i) => new
         {
@@ -90,10 +96,14 @@ public class LeaderboardsApiController : ControllerBase
         [FromQuery] string type,
         [FromQuery] int    page     = 1,
         [FromQuery] int    pageSize = 10,
-        [FromQuery] string? mode    = "Official")
+        [FromQuery] string? mode    = "Official",
+        [FromQuery] string? period  = "Overall")
     {
         if (!Enum.TryParse<ChugType>(type, ignoreCase: true, out var chugType))
             return BadRequest(new { error = "Invalid chug type." });
+
+        if (!Enum.TryParse<LeaderboardPeriod>(period, ignoreCase: true, out var leaderboardPeriod))
+            return BadRequest(new { error = "Invalid period." });
 
         ApplicationMode? appMode = null;
         if (!string.IsNullOrEmpty(mode) && mode != "null")
@@ -106,7 +116,7 @@ public class LeaderboardsApiController : ControllerBase
         page     = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
 
-        var (items, total) = await _attempts.GetLeaderboardPagedAsync(chugType, page, pageSize, appMode);
+        var (items, total) = await _attempts.GetLeaderboardPagedAsync(chugType, page, pageSize, appMode, leaderboardPeriod);
 
         var globalOffset = (page - 1) * pageSize;
         var entries = items.Select((e, i) => new

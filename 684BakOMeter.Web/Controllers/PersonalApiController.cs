@@ -31,7 +31,8 @@ public class PersonalApiController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] string? name,
         [FromQuery] int? playerId,
-        [FromQuery] string? mode = null)
+        [FromQuery] string? mode = null,
+        [FromQuery] string? period = "Overall")
     {
         Domain.Entities.Player? player = null;
 
@@ -52,6 +53,9 @@ public class PersonalApiController : ControllerBase
         if (player is null)
             return NotFound(new { error = "Speler niet gevonden." });
 
+        if (!Enum.TryParse<LeaderboardPeriod>(period, ignoreCase: true, out var leaderboardPeriod))
+            return BadRequest(new { error = "Invalid period." });
+
         ApplicationMode? appMode;
         if (string.IsNullOrWhiteSpace(mode))
         {
@@ -70,7 +74,7 @@ public class PersonalApiController : ControllerBase
             return BadRequest(new { error = "Invalid mode." });
         }
 
-        var stats = await _attempts.GetPersonalStatsAsync(player.Id, appMode);
+        var stats = await _attempts.GetPersonalStatsAsync(player.Id, appMode, leaderboardPeriod);
 
         var result = stats.Select(s => new
         {
@@ -88,6 +92,7 @@ public class PersonalApiController : ControllerBase
             playerId = player.Id,
             playerName = player.Name,
             mode = appMode?.ToString(),
+            period = leaderboardPeriod.ToString(),
             stats = result,
         });
     }
@@ -101,10 +106,14 @@ public class PersonalApiController : ControllerBase
         [FromQuery] int playerId,
         [FromQuery] string type,
         [FromQuery] int count = 10,
-        [FromQuery] string? mode = null)
+        [FromQuery] string? mode = null,
+        [FromQuery] string? period = "Overall")
     {
         if (!Enum.TryParse<ChugType>(type, ignoreCase: true, out var chugType))
             return BadRequest(new { error = "Invalid chug type." });
+
+        if (!Enum.TryParse<LeaderboardPeriod>(period, ignoreCase: true, out var leaderboardPeriod))
+            return BadRequest(new { error = "Invalid period." });
 
         ApplicationMode? appMode;
         if (string.IsNullOrWhiteSpace(mode))
@@ -128,7 +137,7 @@ public class PersonalApiController : ControllerBase
         if (player is null)
             return NotFound(new { error = "Speler niet gevonden." });
 
-        var attempts = await _attempts.GetRecentByPlayerAndTypeAsync(playerId, chugType, count, appMode);
+        var attempts = await _attempts.GetRecentByPlayerAndTypeAsync(playerId, chugType, count, appMode, leaderboardPeriod);
 
         // Return in chronological order (oldest first) for graphing
         var result = attempts.Reverse().Select(a => new

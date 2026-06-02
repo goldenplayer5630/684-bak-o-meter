@@ -32,7 +32,11 @@ public class LeaderboardsModel : PageModel
         var leaderboards = new Dictionary<string, object>();
         foreach (var ct in ChugTypeLabels.Main.Keys)
         {
-            var entries = await _attempts.GetLeaderboardAsync(ct, 8);
+            var entries = await _attempts.GetLeaderboardAsync(
+                ct,
+                8,
+                ApplicationMode.Official,
+                LeaderboardPeriod.Overall);
             leaderboards[ct.ToString()] = entries.Select((e, i) => new
             {
                 rank = i + 1,

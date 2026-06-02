@@ -11,7 +11,7 @@
                         <path d="M8 21h8M12 17v4M5 3h14l-1 8a6 6 0 01-12 0L5 3z" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round" />
                         <path d="M5 7H2l1 5a3 3 0 003 2M19 7h3l-1 5a3 3 0 01-3 2" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round" />
                     </svg>
-                    {{ currentTypeLabel }}
+                    {{ currentTypeLabel }} - {{ currentPeriod.toUpperCase() }}
                 </div>
                 <div v-if="currentLeaderboard.length === 0" class="leaderboard-empty">
                     Nog geen scores
@@ -99,6 +99,10 @@ const phase = ref('attract');
 const currentTypeIndex = ref(0);
 const currentLeaderboard = ref([]);
 const selectedIndex = ref(0);
+const leaderboardPeriods = ['Daily', 'Weekly', 'Monthly', 'Overall'];
+const currentPeriodIndex = ref(0);
+
+const currentPeriod = computed(() => leaderboardPeriods[currentPeriodIndex.value] ?? 'Overall');
 
 // --- Attract mode ---
 let attractInterval = null;
@@ -127,7 +131,7 @@ async function loadLeaderboard(index) {
     if (!type) return;
 
     try {
-        const r = await fetch(`/api/leaderboards?type=${type.slug}&mode=${activeMode.value}`);
+        const r = await fetch(`/api/leaderboards?type=${type.slug}&mode=${activeMode.value}&period=${currentPeriod.value}`);
         const data = await r.json();
         currentLeaderboard.value = Array.isArray(data) ? data : [];
     } catch {
@@ -140,10 +144,16 @@ function startAttract() {
     phase.value = 'attract';
     idleTimeout.stop();
     currentTypeIndex.value = 0;
+    currentPeriodIndex.value = 0;
     loadLeaderboard(0);
     attractInterval = setInterval(() => {
         if (props.chugTypes.length === 0) return;
-        currentTypeIndex.value = (currentTypeIndex.value + 1) % props.chugTypes.length;
+
+        currentPeriodIndex.value = (currentPeriodIndex.value + 1) % leaderboardPeriods.length;
+        if (currentPeriodIndex.value === 0) {
+            currentTypeIndex.value = (currentTypeIndex.value + 1) % props.chugTypes.length;
+        }
+
         loadLeaderboard(currentTypeIndex.value);
     }, 10000);
 }

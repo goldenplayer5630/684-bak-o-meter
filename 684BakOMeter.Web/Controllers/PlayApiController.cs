@@ -68,7 +68,7 @@ public class PlayApiController : ControllerBase
 
         await _attempts.AddAsync(attempt);
 
-        var rank = await _attempts.GetAttemptRankAsync(attempt.Id, chugType);
+        var rank = await _attempts.GetAttemptRankAsync(attempt.Id, chugType, mode, LeaderboardPeriod.Overall);
 
         return Ok(new
         {

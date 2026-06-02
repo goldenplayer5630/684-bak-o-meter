@@ -1,5 +1,6 @@
 using System.Text.Json;
 using _684BakOMeter.Web.Data.Repositories;
+using _684BakOMeter.Web.Domain.Entities;
 using _684BakOMeter.Web.Services;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -31,7 +32,11 @@ public class HiddenLeaderboardsModel : PageModel
         var leaderboards = new Dictionary<string, object>();
         foreach (var ct in ChugTypeLabels.Hidden.Keys)
         {
-            var entries = await _attempts.GetLeaderboardAsync(ct, 8);
+            var entries = await _attempts.GetLeaderboardAsync(
+                ct,
+                8,
+                ApplicationMode.Official,
+                LeaderboardPeriod.Overall);
             leaderboards[ct.ToString()] = entries.Select((e, i) => new
             {
                 rank = i + 1,

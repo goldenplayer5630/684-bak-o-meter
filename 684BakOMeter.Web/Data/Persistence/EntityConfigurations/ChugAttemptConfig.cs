@@ -53,6 +53,10 @@ public class ChugAttemptConfig : IEntityTypeConfiguration<ChugAttempt>
                .HasMaxLength(50)
                .HasDefaultValue(ApplicationMode.Official);
 
+        builder.HasIndex(ca => new { ca.ChugType, ca.Mode, ca.StartedAt, ca.DurationMs, ca.PlayerId });
+        builder.HasIndex(ca => new { ca.ChugType, ca.StartedAt, ca.DurationMs, ca.PlayerId });
+        builder.HasIndex(ca => new { ca.PlayerId, ca.ChugType, ca.Mode, ca.StartedAt });
+
         // The 1v1 FK columns live on OneVsOneMatch (one-to-one, FK on that side).
         // EF will resolve OneVsOneMatchAsPlayer1 / AsPlayer2 via the OneVsOneMatchConfig.
     }

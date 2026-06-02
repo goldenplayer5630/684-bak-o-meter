@@ -4,6 +4,17 @@
             ??? GEHEIM ???
         </h1>
 
+        <div class="lb-period-select mt-1" @mouseenter="focus = 'period'">
+            <label for="hidden-leaderboard-period" class="arcade-subtitle" style="font-size:.45rem;">PERIODE</label>
+            <select id="hidden-leaderboard-period"
+                    class="arcade-input"
+                    :class="{ selected: focus === 'period' }"
+                    v-model="selectedPeriod"
+                    @change="onPeriodChanged">
+                <option v-for="p in periods" :key="p.value" :value="p.value">{{ p.label }}</option>
+            </select>
+        </div>
+
         <!-- Mode selector -->
         <div class="leaderboard-tabs mt-1" style="margin-bottom:0.2rem;">
             <button v-for="(m, i) in allModes" :key="m"
@@ -92,10 +103,28 @@ const { availableModes, loadMode } = useAppMode();
 
 const allModes = computed(() => availableModes.value);
 const selectedMode = ref(null); // null = all modes
+const selectedPeriod = ref('Overall');
+const periods = [
+    { value: 'Overall', label: 'Overall' },
+    { value: 'Monthly', label: 'Monthly' },
+    { value: 'Weekly', label: 'Weekly' },
+    { value: 'Daily', label: 'Daily' },
+];
 
 function pickMode(m) {
     selectedMode.value = selectedMode.value === m ? null : m;
     load(tabIdx.value, 1);
+}
+
+function onPeriodChanged() {
+    load(tabIdx.value, 1);
+}
+
+function movePeriod(delta) {
+    const idx = periods.findIndex(p => p.value === selectedPeriod.value);
+    const next = (idx + delta + periods.length) % periods.length;
+    selectedPeriod.value = periods[next].value;
+    onPeriodChanged();
 }
 
 const PER_PAGE = 8;
@@ -118,7 +147,7 @@ async function fetchPage(slug, p) {
     loading.value = true;
     try {
         const modeParam = selectedMode.value ? `&mode=${selectedMode.value}` : '&mode=null';
-        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}${modeParam}`);
+        const r = await fetch(`/api/leaderboards/paged?type=${slug}&page=${p}&pageSize=${PER_PAGE}${modeParam}&period=${selectedPeriod.value}`);
         const d = await r.json();
         entries.value = d.entries    ?? [];
         pages.value   = d.totalPages ?? 1;
@@ -163,22 +192,34 @@ useKeyController({
     onEscape: () => goBack(),
     onUp: () => {
         const f = focus.value;
+        if (f === 'tab') focus.value = 'period';
         if (f === 'back') focus.value = pages.value > 1 ? 'pager' : 'tab';
         else if (f === 'pager') focus.value = 'tab';
     },
     onDown: () => {
         const f = focus.value;
         const paging = pages.value > 1;
-        if (f === 'tab') focus.value = paging ? 'pager' : 'back';
+        if (f === 'period') focus.value = 'tab';
+        else if (f === 'tab') focus.value = paging ? 'pager' : 'back';
         else if (f === 'pager') focus.value = 'back';
     },
     onLeft: () => {
+        if (focus.value === 'period') {
+            movePeriod(-1);
+            return;
+        }
+
         if (focus.value !== 'tab' || props.chugTypes.length === 0) return;
         const n = props.chugTypes.length;
         tabIdx.value = (tabIdx.value - 1 + n) % n;
         load(tabIdx.value, 1);
     },
     onRight: () => {
+        if (focus.value === 'period') {
+            movePeriod(1);
+            return;
+        }
+
         if (focus.value !== 'tab' || props.chugTypes.length === 0) return;
         const n = props.chugTypes.length;
         tabIdx.value = (tabIdx.value + 1) % n;
@@ -188,6 +229,7 @@ useKeyController({
         const f = focus.value;
         if (f === 'back') goBack();
         else if (f === 'pager') go((page.value % pages.value) + 1);
+        else if (f === 'period') movePeriod(1);
     },
 });
 
@@ -208,6 +250,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.lb-period-select {
+    width: 100%;
+    max-width: 340px;
+}
+
+.lb-period-select .arcade-input {
+    width: 100%;
+    border: 2px solid rgba(255,255,255,.08);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border-radius: 5px;
+    padding: 0.45rem 0.7rem;
+    font-family: var(--font-arcade);
+    font-size: 0.55rem;
+    letter-spacing: 0.5px;
+}
+
+.lb-period-select .arcade-input.selected {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+    background: rgba(255,215,0,.08);
+    box-shadow: 0 0 0 2px rgba(255,215,0,.15);
+    transform: scale(1.05);
+}
+
 .leaderboard-mode {
     font-family: var(--font-arcade);
     font-size: 0.42rem;

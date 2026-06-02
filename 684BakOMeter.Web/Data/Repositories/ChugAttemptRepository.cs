@@ -96,11 +96,15 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
     /// <inheritdoc />
     public async Task<IEnumerable<ChugAttempt>> GetLeaderboardAsync(
-        ChugType chugType, int count = 10, ApplicationMode? mode = ApplicationMode.Official)
+        ChugType chugType,
+        int count = 10,
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         // One entry per player - the attempt with the lowest DurationMs (ties: lowest Id)
         var query = _db.ChugAttempts.AsNoTracking().Where(a => a.ChugType == chugType);
         if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+        query = ApplyPeriodFilter(query, period);
 
         var bestIds = await query
             .GroupBy(a => a.PlayerId)
@@ -120,11 +124,16 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
     /// <inheritdoc />
     public async Task<(IEnumerable<ChugAttempt> Items, int TotalCount)> GetLeaderboardPagedAsync(
-        ChugType chugType, int page, int pageSize, ApplicationMode? mode = ApplicationMode.Official)
+        ChugType chugType,
+        int page,
+        int pageSize,
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         // One entry per player - the attempt with the lowest DurationMs (ties: lowest Id)
         var query = _db.ChugAttempts.AsNoTracking().Where(a => a.ChugType == chugType);
         if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+        query = ApplyPeriodFilter(query, period);
 
         var bestIds = await query
             .GroupBy(a => a.PlayerId)
@@ -146,29 +155,39 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
     /// <inheritdoc />
     public async Task<int?> GetAttemptRankAsync(
-        int attemptId, ChugType chugType, ApplicationMode? mode = ApplicationMode.Official)
+        int attemptId,
+        ChugType chugType,
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         var attempt = await _db.ChugAttempts
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == attemptId && a.ChugType == chugType);
         if (attempt is null) return null;
 
-        // Rank the player's personal best duration, not necessarily this specific attempt
-        var playerBestDuration = await _db.ChugAttempts
+        var rankedAttemptQuery = _db.ChugAttempts
             .AsNoTracking()
-            .Where(a => a.PlayerId == attempt.PlayerId && a.ChugType == chugType)
-            .MinAsync(a => a.DurationMs);
+            .Where(a => a.PlayerId == attempt.PlayerId && a.ChugType == chugType);
+        if (mode.HasValue) rankedAttemptQuery = rankedAttemptQuery.Where(a => a.Mode == mode.Value);
+        rankedAttemptQuery = ApplyPeriodFilter(rankedAttemptQuery, period);
 
+        var playerBestDuration = await rankedAttemptQuery
+            .Select(a => (int?)a.DurationMs)
+            .MinAsync();
+        if (!playerBestDuration.HasValue) return null;
+
+        // Rank the player's personal best duration, not necessarily this specific attempt
         // Count players whose personal best is strictly faster, within the same mode
         var rankQuery = _db.ChugAttempts
             .AsNoTracking()
             .Where(a => a.ChugType == chugType);
         if (mode.HasValue) rankQuery = rankQuery.Where(a => a.Mode == mode.Value);
+        rankQuery = ApplyPeriodFilter(rankQuery, period);
 
         var rank = await rankQuery
             .GroupBy(a => a.PlayerId)
             .Select(g => g.Min(a => a.DurationMs))
-            .CountAsync(best => best < playerBestDuration) + 1;
+            .CountAsync(best => best < playerBestDuration.Value) + 1;
 
         return rank;
     }
@@ -177,12 +196,14 @@ public class ChugAttemptRepository : IChugAttemptRepository
     public async Task<ChugAttempt?> GetPersonalBestAsync(
         int playerId,
         ChugType chugType,
-        ApplicationMode? mode = ApplicationMode.Official)
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         var query = _db.ChugAttempts
             .AsNoTracking()
             .Where(a => a.PlayerId == playerId && a.ChugType == chugType);
         if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+        query = ApplyPeriodFilter(query, period);
 
         var best = await query
             .OrderBy(a => a.DurationMs)
@@ -196,13 +217,15 @@ public class ChugAttemptRepository : IChugAttemptRepository
     /// <inheritdoc />
     public async Task<IEnumerable<PersonalStat>> GetPersonalStatsAsync(
         int playerId,
-        ApplicationMode? mode = ApplicationMode.Official)
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         // Load all attempts for this player in one query
         var playerQuery = _db.ChugAttempts
             .AsNoTracking()
             .Where(a => a.PlayerId == playerId);
         if (mode.HasValue) playerQuery = playerQuery.Where(a => a.Mode == mode.Value);
+        playerQuery = ApplyPeriodFilter(playerQuery, period);
 
         var playerAttempts = await playerQuery
             .ToListAsync();
@@ -217,18 +240,24 @@ public class ChugAttemptRepository : IChugAttemptRepository
             var attemptCount = group.Count();
 
             // Rank: count players whose personal best is strictly faster than this player's
-            var rank = await _db.ChugAttempts
+            var rankQuery = _db.ChugAttempts
                 .AsNoTracking()
                 .Where(a => a.ChugType == chugType)
-                .Where(a => !mode.HasValue || a.Mode == mode.Value)
+                .Where(a => !mode.HasValue || a.Mode == mode.Value);
+            rankQuery = ApplyPeriodFilter(rankQuery, period);
+
+            var rank = await rankQuery
                 .GroupBy(a => a.PlayerId)
                 .Select(g => g.Min(a => a.DurationMs))
                 .CountAsync(bestMs => bestMs < best.DurationMs) + 1;
 
-            var total = await _db.ChugAttempts
+            var totalQuery = _db.ChugAttempts
                 .AsNoTracking()
                 .Where(a => a.ChugType == chugType)
-                .Where(a => !mode.HasValue || a.Mode == mode.Value)
+                .Where(a => !mode.HasValue || a.Mode == mode.Value);
+            totalQuery = ApplyPeriodFilter(totalQuery, period);
+
+            var total = await totalQuery
                 .Select(a => a.PlayerId)
                 .Distinct()
                 .CountAsync();
@@ -244,12 +273,14 @@ public class ChugAttemptRepository : IChugAttemptRepository
         int playerId,
         ChugType chugType,
         int count = 10,
-        ApplicationMode? mode = ApplicationMode.Official)
+        ApplicationMode? mode = ApplicationMode.Official,
+        LeaderboardPeriod period = LeaderboardPeriod.Overall)
     {
         var query = _db.ChugAttempts
             .AsNoTracking()
             .Where(a => a.PlayerId == playerId && a.ChugType == chugType);
         if (mode.HasValue) query = query.Where(a => a.Mode == mode.Value);
+        query = ApplyPeriodFilter(query, period);
 
         var attempts = await query
             .OrderByDescending(a => a.StartedAt)
@@ -298,5 +329,47 @@ public class ChugAttemptRepository : IChugAttemptRepository
 
         foreach (var attempt in attempts)
             attempt.IsHighScore = bestIds.Contains(attempt.Id);
+    }
+
+    private static IQueryable<ChugAttempt> ApplyPeriodFilter(IQueryable<ChugAttempt> query, LeaderboardPeriod period)
+    {
+        var (startUtc, endUtc) = GetPeriodBounds(period, DateTime.UtcNow);
+        if (startUtc.HasValue)
+        {
+            query = query.Where(a => a.StartedAt >= startUtc.Value);
+        }
+
+        if (endUtc.HasValue)
+        {
+            query = query.Where(a => a.StartedAt < endUtc.Value);
+        }
+
+        return query;
+    }
+
+    private static (DateTime? StartUtc, DateTime? EndUtc) GetPeriodBounds(LeaderboardPeriod period, DateTime nowUtc)
+    {
+        var utcNow = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
+
+        return period switch
+        {
+            LeaderboardPeriod.Daily =>
+                (utcNow.Date, utcNow.Date.AddDays(1)),
+
+            LeaderboardPeriod.Weekly =>
+                (GetWeekStartUtc(utcNow), GetWeekStartUtc(utcNow).AddDays(7)),
+
+            LeaderboardPeriod.Monthly =>
+                (new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+                 new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1)),
+
+            _ => (null, null),
+        };
+    }
+
+    private static DateTime GetWeekStartUtc(DateTime utcNow)
+    {
+        var diff = ((int)utcNow.DayOfWeek + 6) % 7;
+        return utcNow.Date.AddDays(-diff);
     }
 }
