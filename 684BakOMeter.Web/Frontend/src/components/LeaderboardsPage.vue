@@ -60,9 +60,6 @@
             &lsaquo; TERUG (DRUK ESC)
         </button>
 
-        <!-- Active mode badge -->
-        <div v-if="activeMode !== ApplicationModes.Official" class="mode-badge">{{ activeMode.toUpperCase() }} MODE</div>
-
         <!-- Key hint -->
         <div class="arcade-subtitle" style="font-size:.4rem;">
             &#8593;&#8595;&#8592;&#8594; NAVIGEREN &bull; SPATIE/ENTER SELECTEREN &bull; ESC TERUG

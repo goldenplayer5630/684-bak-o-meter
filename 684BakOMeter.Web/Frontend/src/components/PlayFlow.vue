@@ -40,9 +40,6 @@
             </div>
         </template>
 
-        <!-- DMS mode indicator -->
-        <div v-if="isDmsMode && step === 'mode'" class="dms-badge">DMS MODE</div>
-
         <!-- STEP 2: NFC scan for player 1 -->
         <template v-if="step === 'nfc-scan'">
             <h1 class="arcade-title arcade-title--small">SPELER 1</h1>
